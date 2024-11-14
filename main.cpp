@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -12,17 +13,17 @@
 #include <thread>
 
 void sendMessage(int fd) { // Need address and port to send message
-  struct sockaddr_in sAddr;
-  sAddr.sin_family = AF_INET;
+  struct sockaddr_in6 sAddr;
+  sAddr.sin6_family = AF_INET6;
   std::string addr;
   int port;
 
   std::cout << "Enter ADDRESS PORT" << std::endl;
   std::cin >> addr >> port;
   std::cin.clear();
-  sAddr.sin_port = htons(port);
+  sAddr.sin6_port = htons(port);
 
-  if (inet_pton(AF_INET, addr.c_str(), &sAddr.sin_addr) <= 0) {
+  if (inet_pton(AF_INET6, addr.c_str(), &sAddr.sin6_addr) <= 0) {
     printf("\nInvalid address: %s\n", addr.c_str());
     return;
   }
@@ -45,7 +46,7 @@ void sendMessage(int fd) { // Need address and port to send message
   }
 }
 
-void getMessage(int fd, const sockaddr_in &sAddr) {
+void getMessage(int fd) {
   char buffer[1000];
   std::fill(buffer, buffer + 1000, 0);
   while (true) {
@@ -76,28 +77,34 @@ int main(int argc, char **argv) {
   int port = std::stoi(argv[2]);
 
   int fd;
-  if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
     printf("Socket creation failed\n");
     return 1;
   }
   printf("Socket creation successful\n");
 
-  struct sockaddr_in sAddr;
-  sAddr.sin_family = AF_INET;
-  sAddr.sin_port = htons(port);
+  struct sockaddr_in6 sAddr;
+  sAddr.sin6_family = AF_INET6;
+  sAddr.sin6_port = htons(port);
+  sAddr.sin6_flowinfo = 0;
+  sAddr.sin6_scope_id = if_nametoindex("eth0");
 
-  if (inet_pton(AF_INET, addr.c_str(), &sAddr.sin_addr) <= 0) {
-    printf("\nInvalid address/ Address not supported \n");
+  int err = inet_pton(AF_INET6, addr.c_str(), &sAddr.sin6_addr);
+  if (err < 1) {
+    printf("Error: %d\n", err);
+    printf("Invalid address Address not supported \n");
     return -1;
   }
 
-  if (bind(fd, (struct sockaddr *)&sAddr, sizeof(sAddr)) < 0) {
-    perror("Socket binding failed");
+  err = bind(fd, (struct sockaddr *)&sAddr, sizeof(sAddr));
+  if (err < 0) {
+    printf("Error: %d\n", err);
+    perror("Socket binding failed\n");
     return 1;
   }
   printf("Socket binding successful\n");
 
-  std::thread server(getMessage, fd, sAddr);
+  std::thread server(getMessage, fd);
   std::thread client(sendMessage, fd);
 
   client.join();
