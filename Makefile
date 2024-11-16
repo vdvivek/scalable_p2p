@@ -1,4 +1,4 @@
 CXX:= g++
 
-build:
+build: node
 	${CXX} main.cpp -o node

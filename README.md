@@ -9,3 +9,10 @@ make
 ```
 node <ADDR> <PORT>
 ```
+
+## Left To Implement
+*   Discovery
+*   Routing
+*   Fragmentation
+*   Error Correction
+*   Encryption
