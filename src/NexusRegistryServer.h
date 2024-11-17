@@ -11,6 +11,7 @@
 struct NodeInfo {
     std::string name;
     std::string ip;
+    std::string coords;
     int port;
 };
 

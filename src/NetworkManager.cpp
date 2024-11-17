@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "Node.h"
+#include "SatelliteNode.h"
 
 NetworkManager::NetworkManager(const std::string& registryAddress)
     : registryAddress(registryAddress) {}
@@ -39,6 +40,18 @@ void NetworkManager::removeNode(const std::string &id) {
     }
 }
 
+std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
+    std::vector<std::shared_ptr<Node>> satellites;
+
+    for (const auto& node : nodes) {
+        if (dynamic_cast<SatelliteNode*>(node.get())) {
+            satellites.push_back(node);
+        }
+    }
+    return satellites;
+}
+
+
 void NetworkManager::listNodes() const {
     // Fetch nodes from the registry
     const_cast<NetworkManager*>(this)->fetchNodesFromRegistry();
@@ -50,10 +63,11 @@ void NetworkManager::listNodes() const {
 
     std::cout << "[INFO] Current nodes in the network:" << std::endl;
     for (const auto& node : nodes) {
-        if (node) { // Ensure the pointer is valid
+        if (node) {
+            auto coords = node->getCoords();
             std::cout << node->getName() << " (" << node->getId() << ") at "
                       << node->getIP() << ":" << node->getPort()
-                      << " [" << node->getX() << ", " << node->getY() << ", " << node->getZ() << "]" << std::endl;
+                      << " [" << coords.first << ", " << coords.second << "]" << std::endl;
         } else {
             std::cerr << "[WARNING] Encountered a null node entry in the network." << std::endl;
         }
@@ -73,6 +87,9 @@ bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node>& node)
     payload["name"] = node->getName();
     payload["ip"] = node->getIP();
     payload["port"] = node->getPort();
+    auto coords = node->getCoords();
+    payload["x"] = coords.first;
+    payload["y"] = coords.second;
     std::string payloadStr = payload.toStyledString();
 
     struct curl_slist* headers = nullptr;
@@ -107,6 +124,9 @@ void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node>& nod
     payload["name"] = node->getName();
     payload["ip"] = node->getIP();
     payload["port"] = node->getPort();
+    auto coords = node->getCoords();
+    payload["x"] = coords.first;
+    payload["y"] = coords.second;
     std::string payloadStr = payload.toStyledString();
 
     struct curl_slist* headers = nullptr;
@@ -205,12 +225,15 @@ void NetworkManager::fetchNodesFromRegistry() {
             std::cerr << "[ERROR] Malformed node entry in response: " << nodeJson << std::endl;
             continue;
         }
+
+        double x = nodeJson.isMember("x") ? nodeJson["x"].asDouble() : 0.0;
+        double y = nodeJson.isMember("y") ? nodeJson["y"].asDouble() : 0.0;
         
         auto node = std::make_shared<Node>(
             nodeJson["name"].asString(),
             nodeJson["ip"].asString(),
             nodeJson["port"].asInt(),
-            0, 0, 0, // Default coordinates
+            std::make_pair(x, y), // Pass coordinates as pair
             *this
         );
         addNode(node);
