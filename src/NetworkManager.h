@@ -13,6 +13,7 @@ public:
 
     void addNode(const std::shared_ptr<Node>& node);
     void removeNode(const std::string &id);
+    std::vector<std::shared_ptr<Node>> getNodes() const;
     void listNodes() const;
 
     bool registerNodeWithRegistry(const std::shared_ptr<Node>& node);

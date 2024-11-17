@@ -4,6 +4,8 @@
 
 #include "../src/Node.h"
 #include "../src/NetworkManager.h"
+#include "../src/GroundNode.h"
+#include "../src/SatelliteNode.h"
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
@@ -113,9 +115,28 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    std::shared_ptr<Node> node = std::make_shared<Node>(name, ip, port, x, y, networkManager);
-    std::cout << "[INFO] Creating a Node..." << std::endl;
-    networkManager.registerNodeWithRegistry(node);
+    std::shared_ptr<Node> node;
+    std::thread positionUpdateThread;
+
+    if (nodeType == "ground") {
+        node = std::make_shared<GroundNode>(name, ip, port, x, y, networkManager);
+        std::cout << "[INFO] Creating a GroundNode..." << std::endl;
+    } else if (nodeType == "satellite") {
+        auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, x, y, networkManager);
+        node = satelliteNode;
+
+        // Create a thread to update position periodically
+        positionUpdateThread = std::thread([satelliteNode]() {
+            while (isRunning) {
+                satelliteNode->updatePosition();
+                std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every second
+            }
+        });
+
+
+        std::cout << "[INFO] Creating a SatelliteNode..." << std::endl;
+    }
+
 
     if (!node->bind()) {
         std::cerr << "[ERROR] Failed to bind the node. Exiting." << std::endl;
@@ -135,9 +156,15 @@ int main(int argc, char **argv)
     }
 
     networkManager.fetchNodesFromRegistry();
-    // Wait for receiver thread to finish
+
+    isRunning = false;
+
     if (receiverThread.joinable()) {
         receiverThread.join();
+    }
+
+    if (positionUpdateThread.joinable()) {
+        positionUpdateThread.join();
     }
 
     return 0;

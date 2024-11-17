@@ -39,6 +39,10 @@ void NetworkManager::removeNode(const std::string &id) {
     }
 }
 
+std::vector<std::shared_ptr<Node>> NetworkManager::getNodes() const {
+    return nodes;
+}
+
 void NetworkManager::listNodes() const {
     // Fetch nodes from the registry
     const_cast<NetworkManager*>(this)->fetchNodesFromRegistry();
@@ -53,7 +57,7 @@ void NetworkManager::listNodes() const {
         if (node) { // Ensure the pointer is valid
             std::cout << node->getName() << " (" << node->getId() << ") at "
                       << node->getIP() << ":" << node->getPort()
-                      << " [" << node->getX() << ", " << node->getY() << ", " << node->getZ() << "]" << std::endl;
+                      << " [" << node->getX() << ", " << node->getY() << "]" << std::endl;
         } else {
             std::cerr << "[WARNING] Encountered a null node entry in the network." << std::endl;
         }
@@ -210,7 +214,7 @@ void NetworkManager::fetchNodesFromRegistry() {
             nodeJson["name"].asString(),
             nodeJson["ip"].asString(),
             nodeJson["port"].asInt(),
-            0, 0, 0, // Default coordinates
+            0, 0, // Default coordinates
             *this
         );
         addNode(node);
