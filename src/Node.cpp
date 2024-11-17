@@ -13,7 +13,6 @@ std::string Node::getIP() const { return ip; }
 int Node::getPort() const { return port; }
 double Node::getX() const { return x; }
 double Node::getY() const { return y; }
-double Node::getZ() const { return z; }
 
 // Utility function to generate UUID
 std::string Node::generateUUID() {
@@ -63,8 +62,8 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
 }
 
 
-Node::Node(std::string name, const std::string &ip, int port, double x, double y, double z, NetworkManager &networkManager)
-    : id(generateUUID()), name(std::move(name)), ip(ip), port(port), x(x), y(y), z(z), networkManager(networkManager) {
+Node::Node(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager)
+    : id(generateUUID()), name(std::move(name)), ip(ip), port(port), x(x), y(y), networkManager(networkManager) {
     socket_fd = -1;
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;

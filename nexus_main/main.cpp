@@ -72,12 +72,12 @@ void handleInput(const std::shared_ptr<Node>& node) {
 }
 
 void printUsage() {
-    std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port <PORT> -x <X_COORD> -y <Y_COORD> -z <Z_COORD>" << std::endl;
+    std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port <PORT> -x <X_COORD> -y <Y_COORD>" << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 15) {
+    if (argc != 14) {
         printUsage();
         return 1;
     }
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     std::string name;
     std::string ip;
     int port = 0;
-    double x = 0.0, y = 0.0, z = 0.0;
+    double x = 0.0, y = 0.0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-node") == 0) {
@@ -101,8 +101,6 @@ int main(int argc, char **argv)
             x = std::stod(argv[++i]);
         } else if (strcmp(argv[i], "-y") == 0) {
             y = std::stod(argv[++i]);
-        } else if (strcmp(argv[i], "-z") == 0) {
-            z = std::stod(argv[++i]);
         } else {
             printUsage();
             return 2;
@@ -115,7 +113,7 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    std::shared_ptr<Node> node = std::make_shared<Node>(name, ip, port, x, y, z, networkManager);
+    std::shared_ptr<Node> node = std::make_shared<Node>(name, ip, port, x, y, networkManager);
     std::cout << "[INFO] Creating a Node..." << std::endl;
     networkManager.registerNodeWithRegistry(node);
 

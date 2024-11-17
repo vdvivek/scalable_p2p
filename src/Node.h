@@ -8,7 +8,7 @@
 
 class Node {
 public:
-    Node(std::string name, const std::string &ip, int port, double x, double y, double z, NetworkManager &networkManager);
+    Node(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager);
     virtual ~Node();
 
     std::string getId() const;
@@ -17,7 +17,6 @@ public:
     int getPort() const;
     double getX() const;
     double getY() const;
-    double getZ() const;
 
     virtual bool bind();
     virtual void updatePosition();
@@ -32,7 +31,7 @@ protected:
     std::string name;
     std::string ip;
     int port;
-    double x, y, z;
+    double x, y;
 
     NetworkManager &networkManager;
 
