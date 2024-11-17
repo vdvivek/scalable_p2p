@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.25)
 project(scalable_p2p)
 
 set(CMAKE_CXX_STANDARD 11)
+
+find_package(CURL REQUIRED)
+find_package(jsoncpp REQUIRED)
 
 # Find jsoncpp headers and libraries
 include_directories(/opt/homebrew/Cellar/jsoncpp/1.9.6/include)
@@ -16,8 +19,16 @@ set(SHARED_SOURCES
 
 # Nexus executable
 add_executable(nexus nexus_main/main.cpp ${SHARED_SOURCES})
-target_link_libraries(nexus jsoncpp /opt/homebrew/opt/curl/lib/libcurl.dylib)
+if(${CURL_FOUND} AND ${jsoncpp_FOUND})
+        target_link_libraries(nexus CURL::libcurl jsoncpp)
+else(${CURL_FOUND} AND ${jsoncpp_FOUND})
+        target_link_libraries(nexus jsoncpp /opt/homebrew/opt/curl/lib/libcurl.dylib)
+endif(${CURL_FOUND} AND ${jsoncpp_FOUND})
 
 # Registry Server executable
 add_executable(registry_server registry_main/main.cpp src/NexusRegistryServer.cpp)
-target_link_libraries(registry_server jsoncpp /opt/homebrew/opt/curl/lib/libcurl.dylib)
+if(${CURL_FOUND} AND ${jsoncpp_FOUND})
+        target_link_libraries(registry_server CURL::libcurl jsoncpp)
+else(${CURL_FOUND} AND ${jsoncpp_FOUND})
+        target_link_libraries(registry_server jsoncpp /opt/homebrew/opt/curl/lib/libcurl.dylib)
+endif(${CURL_FOUND} AND ${jsoncpp_FOUND})
