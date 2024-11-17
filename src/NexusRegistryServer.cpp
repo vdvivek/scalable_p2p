@@ -78,9 +78,15 @@ void NexusRegistryServer::processRequest(const std::string& request, std::string
     }
 
     std::string action = root["action"].asString();
+    std::pair<double, double> coords = {
+        std::stod(root["x"].asString()),
+        std::stod(root["y"].asString())
+    };
+    std::string coordsString = "(" + std::to_string(coords.first) + ", " + std::to_string(coords.second) + ")";
 
     if (action == "register") {
-        NodeInfo node = { root["name"].asString(), root["ip"].asString(), root["coords"].asString(), root["port"].asInt() };
+        std::cout << "[DEBUG1] " << coordsString << std::endl;
+        NodeInfo node = { root["name"].asString(), root["ip"].asString(), coordsString, root["port"].asInt() };
         registerNode(node);
         response = R"({"message": "Node registered successfully"})";
     } else if (action == "deregister") {
