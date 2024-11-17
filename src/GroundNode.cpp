@@ -3,17 +3,20 @@
 #include <cmath>
 #include <iostream>
 
-GroundNode::GroundNode(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager)
-    : Node(std::move(name), ip, port, x, y, networkManager) {}
+GroundNode::GroundNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
+    : Node(std::move(name), ip, port, std::move(coords), networkManager) {}
 
 std::shared_ptr<SatelliteNode> GroundNode::findNearestSatellite() const {
     double minDistance = std::numeric_limits<double>::max();
     std::shared_ptr<SatelliteNode> nearestSatellite = nullptr;
 
-    for (const auto& node : networkManager.getNodes()) {
+    // Iterate through the list of satellite nodes to find the nearest
+    for (const auto& node : networkManager.getSatelliteNodes()) {
         auto satellite = std::dynamic_pointer_cast<SatelliteNode>(node);
         if (satellite) {
-            double distance = std::sqrt(std::pow(satellite->getX() - x, 2) + std::pow(satellite->getY() - y, 2));
+            auto satelliteCoords = satellite->getCoords();
+            double distance = std::sqrt(std::pow(satelliteCoords.first - coords.first, 2) +
+                                        std::pow(satelliteCoords.second - coords.second, 2));
             if (distance < minDistance) {
                 minDistance = distance;
                 nearestSatellite = satellite;

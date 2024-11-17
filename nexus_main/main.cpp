@@ -10,6 +10,18 @@
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
 
+void printUsage() {
+    std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port <PORT> -x <X_COORD> -y <Y_COORD>" << std::endl;
+}
+
+void printCommands() {
+    std::cout << "[USAGE] Available commands:\n";
+    std::cout << "[USAGE] send  - Send a message.\n";
+    std::cout << "[USAGE] list  - List nodes in the current p2p network.\n";
+    std::cout << "[USAGE] help  - Display help.\n";
+    std::cout << "[USAGE] q     - Quit the application.\n";
+}
+
 void receiverFunction(const std::shared_ptr<Node>& node) {
     while (isRunning) {
         std::string receivedMessage;
@@ -62,24 +74,20 @@ void handleInput(const std::shared_ptr<Node>& node) {
             std::cout << "[INFO] Goodbye..." << std::endl;
             isRunning = false; // Signal shutdown
             break;
+        } else if (command == "help") {
+            printCommands();
         }
         // Handle unknown commands
         else {
             std::cerr << "[ERROR] Unknown command.\n";
-            std::cout << "[INFO] Available commands:\n";
-            std::cout << "[USAGE] send - Send a message\n";
-            std::cout << "[USAGE] q - Quit the application\n";
+            printCommands();
         }
     }
 }
 
-void printUsage() {
-    std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port <PORT> -x <X_COORD> -y <Y_COORD>" << std::endl;
-}
-
 int main(int argc, char **argv)
 {
-    if (argc != 14) {
+    if (argc != 13) {
         printUsage();
         return 1;
     }
@@ -88,7 +96,7 @@ int main(int argc, char **argv)
     std::string name;
     std::string ip;
     int port = 0;
-    double x = 0.0, y = 0.0;
+    std::pair<double, double> coords{0.0, 0.0};
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-node") == 0) {
@@ -100,9 +108,9 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-port") == 0) {
             port = std::stoi(argv[++i]);
         } else if (strcmp(argv[i], "-x") == 0) {
-            x = std::stod(argv[++i]);
+            coords.first = std::stod(argv[++i]);
         } else if (strcmp(argv[i], "-y") == 0) {
-            y = std::stod(argv[++i]);
+            coords.second = std::stod(argv[++i]);
         } else {
             printUsage();
             return 2;
@@ -119,10 +127,10 @@ int main(int argc, char **argv)
     std::thread positionUpdateThread;
 
     if (nodeType == "ground") {
-        node = std::make_shared<GroundNode>(name, ip, port, x, y, networkManager);
+        node = std::make_shared<GroundNode>(name, ip, port, coords, networkManager);
         std::cout << "[INFO] Creating a GroundNode..." << std::endl;
     } else if (nodeType == "satellite") {
-        auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, x, y, networkManager);
+        auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, coords, networkManager);
         node = satelliteNode;
 
         // Create a thread to update position periodically
@@ -137,6 +145,7 @@ int main(int argc, char **argv)
         std::cout << "[INFO] Creating a SatelliteNode..." << std::endl;
     }
 
+    networkManager.registerNodeWithRegistry(node);
 
     if (!node->bind()) {
         std::cerr << "[ERROR] Failed to bind the node. Exiting." << std::endl;

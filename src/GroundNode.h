@@ -7,7 +7,7 @@ class SatelliteNode;
 
 class GroundNode: public Node {
 public:
-    GroundNode(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager);
+    GroundNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager);
 
     void sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort, const std::string &message) override;
 

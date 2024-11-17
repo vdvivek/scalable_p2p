@@ -12,7 +12,7 @@ CURL_LIB = /opt/homebrew/opt/curl/lib
 LIBS = -ljsoncpp -lcurl
 
 # Source files
-NEXUS_SOURCES = nexus_main/main.cpp src/Node.cpp src/NetworkManager.cpp
+NEXUS_SOURCES = nexus_main/main.cpp src/Node.cpp src/NetworkManager.cpp src/GroundNode.cpp src/SatelliteNode.cpp
 REGISTRY_SOURCES = registry_main/main.cpp src/NexusRegistryServer.cpp
 
 # Targets

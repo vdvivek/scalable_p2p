@@ -3,14 +3,14 @@
 #include <thread>
 #include <chrono>
 
-SatelliteNode::SatelliteNode(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager)
-    : Node(std::move(name), ip, port, x, y, networkManager), delay(0) {}
+SatelliteNode::SatelliteNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
+    : Node(std::move(name), ip, port, std::move(coords), networkManager), delay(0) {}
 
 void SatelliteNode::updatePosition() {
     double speedX = 0.05; // Example: Horizontal speed
     double speedY = 0.1;  // Example: Vertical speed
-    x += speedX;
-    y += speedY;
+    coords.first += speedX;
+    coords.second += speedY;
 }
 
 void SatelliteNode::simulateSignalDelay() {
@@ -21,6 +21,10 @@ void SatelliteNode::simulateSignalDelay() {
 }
 
 void SatelliteNode::receiveMessage(std::string &message) {
+    if (message.empty()) {
+    // No message received yet on satellite, so skip
+        return;
+    }
     simulateSignalDelay();
     std::cout << "[INFO] Satellite " << name << " relaying message after " << delay << " seconds delay." << std::endl;
 

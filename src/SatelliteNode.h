@@ -6,7 +6,7 @@
 
 class SatelliteNode: public Node {
 public:
-    SatelliteNode(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager);
+    SatelliteNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager);
 
     void updatePosition() override;
 

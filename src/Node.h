@@ -8,15 +8,15 @@
 
 class Node {
 public:
-    Node(std::string name, const std::string &ip, int port, double x, double y, NetworkManager &networkManager);
+    Node(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager);
     virtual ~Node();
 
     std::string getId() const;
     std::string getName() const;
     std::string getIP() const;
     int getPort() const;
-    double getX() const;
-    double getY() const;
+    std::pair<double, double> getCoords() const;
+    void setCoords(const std::pair<double, double> &newCoords);
 
     virtual bool bind();
     virtual void updatePosition();
@@ -31,7 +31,7 @@ protected:
     std::string name;
     std::string ip;
     int port;
-    double x, y;
+    std::pair<double, double> coords; // Coordinates (x, y)
 
     NetworkManager &networkManager;
 

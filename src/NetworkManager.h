@@ -9,12 +9,13 @@ class Node;
 
 class NetworkManager {
 public:
-    NetworkManager(const std::string& registryAddress);
+    explicit NetworkManager(const std::string& registryAddress);
 
     void addNode(const std::shared_ptr<Node>& node);
     void removeNode(const std::string &id);
-    std::vector<std::shared_ptr<Node>> getNodes() const;
     void listNodes() const;
+
+    std::vector<std::shared_ptr<Node>> getSatelliteNodes() const;
 
     bool registerNodeWithRegistry(const std::shared_ptr<Node>& node);
     void deregisterNodeWithRegistry(const std::shared_ptr<Node>& node);
