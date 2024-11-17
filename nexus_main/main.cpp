@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 #include <atomic>
+#include <cstring>
 
 #include "../src/Node.h"
 #include "../src/NetworkManager.h"
