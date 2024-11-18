@@ -1,10 +1,10 @@
-#include "packet.hpp"
+#include "Packet.hpp"
 
-namespace alice {
-Packet::Packet() : version{VERSION} { std::fill(data.begin(), data.end(), 0); }
+Packet::Packet() : version{PKT_VERSION} { std::fill(data.begin(), data.end(), 0); }
 
 Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort, packetType type)
-    : version{VERSION}, sAddress{sAddr}, sPort{sPort}, tAddress{tAddr}, tPort{tPort}, type{type} {
+    : version{PKT_VERSION}, sAddress{sAddr}, sPort{sPort}, tAddress{tAddr}, tPort{tPort},
+      type{type} {
   std::fill(data.begin(), data.end(), 0);
 }
 
@@ -77,5 +77,3 @@ Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
   std::memcpy(packet.data.data(), &buffer[offset], packet.data.size());
   return packet;
 }
-
-} // namespace alice

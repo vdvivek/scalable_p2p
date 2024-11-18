@@ -2,7 +2,7 @@
 #define NODE_H
 
 #include "NetworkManager.h"
-#include "packet.hpp"
+#include "Packet.hpp"
 
 #include <arpa/inet.h>
 #include <chrono>
@@ -38,7 +38,7 @@ public:
   virtual void sendMessage(const std::string &targetName, const std::string &targetIP,
                            int targetPort, const std::string &message);
 
-  virtual void sendTo(const std::string &targetIP, int targetPort, alice::Packet &pkt);
+  virtual void sendTo(const std::string &targetIP, int targetPort, Packet &pkt);
 
   virtual void sendFile(const std::string &targetIP, int targetPort, const std::string &fileName);
 
@@ -59,9 +59,9 @@ protected:
 
 private:
   static std::string generateUUID();
-  void processMessage(alice::Packet &pkt);
-  void writeToFile(alice::Packet &pkt);
-  void reassembleFile(alice::Packet &pkt);
+  void processMessage(Packet &pkt);
+  void writeToFile(Packet &pkt);
+  void reassembleFile(Packet &pkt);
 };
 
 #endif

@@ -8,9 +8,8 @@
 #include <unistd.h>
 #include <vector>
 
-namespace alice {
 const int MAX_BUFFER_SIZE = 50 * 1000; // 50kb
-const uint8_t VERSION = 1;
+const uint8_t PKT_VERSION = 1;
 
 enum class packetType : uint8_t { TEXT, FILE };
 
@@ -34,5 +33,4 @@ struct Packet {
   static Packet deserialize(const std::vector<uint8_t> &buffer);
 };
 
-} // namespace alice
 #endif

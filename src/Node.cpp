@@ -106,8 +106,8 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   targetAddr.sin_port = htons(targetPort);
   inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
 
-  alice::Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
-                    targetAddr.sin_port, alice::packetType::TEXT);
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
+             packetType::TEXT);
 
   auto packet_data = pkt.serialize();
 
@@ -123,7 +123,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
 }
 
 ///  No routing, pkt might havee different destination
-void Node::sendTo(const std::string &targetIP, int targetPort, alice::Packet &pkt) {
+void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
   struct sockaddr_in targetAddr = {};
   targetAddr.sin_family = AF_INET;
   targetAddr.sin_port = htons(targetPort);
@@ -150,22 +150,22 @@ void Node::sendFile(const std::string &targetIP, int targetPort, const std::stri
   targetAddr.sin_port = htons(targetPort);
   inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
 
-  std::vector<alice::Packet> fragments;
+  std::vector<Packet> fragments;
 
   std::ifstream fileHandle(fileName, std::ios::binary | std::ios::ate);
   size_t file_size = fileHandle.tellg();
-  int fragCount = std::ceil(static_cast<double>(file_size) / alice::MAX_BUFFER_SIZE);
-  alice::Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
-                    targetAddr.sin_port, alice::packetType::FILE);
+  int fragCount = std::ceil(static_cast<double>(file_size) / MAX_BUFFER_SIZE);
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
+             packetType::FILE);
   pkt.fragmentCount = fragCount;
   std::cout << "[NEXUS]: Fragment Count: " << pkt.fragmentCount << std::endl;
 
   fileHandle.seekg(0, std::ios::beg);
   int fragNumber = 1;
-  std::array<uint8_t, alice::MAX_BUFFER_SIZE> buffer;
+  std::array<uint8_t, MAX_BUFFER_SIZE> buffer;
 
   for (int i = 0; i < fragCount; i++) {
-    fileHandle.read(reinterpret_cast<char *>(buffer.data()), alice::MAX_BUFFER_SIZE);
+    fileHandle.read(reinterpret_cast<char *>(buffer.data()), MAX_BUFFER_SIZE);
     auto byteCount = fileHandle.gcount();
     std::cout << "[NEXUS]: Read : " << byteCount << " bytes" << std::endl;
     std::cout << "[NEXUS]: Sending fragment: " << fragNumber << std::endl;
@@ -188,7 +188,7 @@ void Node::receiveMessage(std::string &message) {
   }
 
   // Added extra 32 for non payload data
-  constexpr size_t bufferSize = alice::MAX_BUFFER_SIZE + 32;
+  constexpr size_t bufferSize = MAX_BUFFER_SIZE + 32;
   char buffer[bufferSize];
 
   struct sockaddr_in senderAddr {};
@@ -218,7 +218,7 @@ void Node::receiveMessage(std::string &message) {
   int targetPort = 0;
   std::cout << "[NEXUS] Received message from " << senderIP << ":" << senderPort << "\n";
 
-  alice::Packet pkt = pkt.deserialize(receivedMessage);
+  Packet pkt = pkt.deserialize(receivedMessage);
 
   // std::ofstream debugFile("img3.webp", std::ios::binary | std::ios::app);
   // debugFile.write(reinterpret_cast<char *>(pkt.data.data()), pkt.data.size());
@@ -239,10 +239,10 @@ void Node::updatePosition() {
   std::cout << "[NEXUS] Node " << name << " is currently stationary." << std::endl;
 }
 
-void Node::processMessage(alice::Packet &pkt) {
+void Node::processMessage(Packet &pkt) {
   std::cout << "[NEXUS] Processing message from " << pkt.sAddress << ":" << pkt.sPort << "\n";
 
-  if (pkt.type == alice::packetType::FILE) {
+  if (pkt.type == packetType::FILE) {
     std::cout << "[NEXUS] Writing to file " << pkt.sAddress << ":" << pkt.sPort << "\n";
     std::cout << pkt.fragmentNumber << "/" << pkt.fragmentCount << std::endl;
 
@@ -253,7 +253,7 @@ void Node::processMessage(alice::Packet &pkt) {
   }
 }
 
-void Node::writeToFile(alice::Packet &pkt) {
+void Node::writeToFile(Packet &pkt) {
   std::ostringstream oss;
   oss << "/tmp/" << pkt.sAddress << "_" << pkt.sPort << "_" << pkt.fragmentNumber;
   std::string filename = oss.str();
@@ -263,7 +263,7 @@ void Node::writeToFile(alice::Packet &pkt) {
   ofs.close();
 }
 
-void Node::reassembleFile(alice::Packet &pkt) {
+void Node::reassembleFile(Packet &pkt) {
   std::ostringstream oss;
   oss << pkt.sAddress << "_" << pkt.sPort;
   std::string prefix = oss.str();
@@ -298,7 +298,7 @@ void Node::reassembleFile(alice::Packet &pkt) {
     output << fragment.rdbuf();
     fragment.close();
     std::cout << "[REASSEMBLY]: Deleting fragment " << filename << std::endl;
-    // remove(filename.c_str());
+    remove(filename.c_str());
   }
   output.close();
 }

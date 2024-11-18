@@ -20,7 +20,7 @@ set(SHARED_SOURCES
 )
 
 set(NEXUS_SRC
-        "src/packet.cpp"
+        "src/Packet.cpp"
 )
 
 # Nexus executable
