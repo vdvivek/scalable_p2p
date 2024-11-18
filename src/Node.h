@@ -20,7 +20,7 @@
 
 class Node {
 public:
-  Node(std::string name, const std::string &ip, int port, double x, double y, double z,
+  Node(std::string name, const std::string &ip, int port, std::pair<double, double> coords,
        NetworkManager &networkManager);
   virtual ~Node();
 
@@ -28,9 +28,8 @@ public:
   std::string getName() const;
   std::string getIP() const;
   int getPort() const;
-  double getX() const;
-  double getY() const;
-  double getZ() const;
+  std::pair<double, double> getCoords() const;
+  void setCoords(const std::pair<double, double> &newCoords);
 
   virtual bool bind();
   virtual void updatePosition();
@@ -43,14 +42,15 @@ public:
 
   virtual void sendFile(const std::string &targetIP, int targetPort, const std::string &fileName);
 
-  virtual alice::Packet extractMessage(const std::vector<uint8_t> &payload);
+  virtual std::string extractMessage(const std::string &payload, std::string &senderName,
+                                     std::string &targetIP, int &targetPort);
 
 protected:
   std::string id;
   std::string name;
   std::string ip;
   int port;
-  double x, y, z;
+  std::pair<double, double> coords; // Coordinates (x, y)
 
   NetworkManager &networkManager;
 

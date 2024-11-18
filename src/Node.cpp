@@ -4,9 +4,9 @@ std::string Node::getId() const { return id; }
 std::string Node::getName() const { return name; }
 std::string Node::getIP() const { return ip; }
 int Node::getPort() const { return port; }
-double Node::getX() const { return x; }
-double Node::getY() const { return y; }
-double Node::getZ() const { return z; }
+
+std::pair<double, double> Node::getCoords() const { return coords; }
+void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
 
 // Utility function to generate UUID
 std::string Node::generateUUID() {
@@ -35,23 +35,34 @@ std::string Node::generateUUID() {
   return ss.str();
 }
 
-// Helper function to extract message parts from the payload
-alice::Packet Node::extractMessage(const std::vector<uint8_t> &payload) {
-  auto pkt = alice::Packet::deserialize(payload);
-  // std::cout << pkt.sAddress << " " << pkt.sPort << std::endl;
-  // std::cout << pkt.tAddress << " " << pkt.tPort << std::endl;
+std::string Node::extractMessage(const std::string &payload, std::string &senderName,
+                                 std::string &targetIP, int &targetPort) {
+  std::istringstream iss(payload);
+  std::string portStr;
+  std::string actualMessage;
 
-  // for (auto &it : pkt.data) {
-  //   std::cout << it;
-  // }
-  // std::cout << std::endl;
+  // Parse the payload (format: senderName targetIP targetPort message)
+  if (iss >> senderName >> targetIP >> portStr) {
+    try {
+      targetPort = std::stoi(portStr); // Convert port to integer
+    } catch (const std::exception &e) {
+      std::cerr << "[ERROR] Invalid port in message payload: " << portStr << "\n";
+      return "";
+    }
 
-  return pkt;
+    // Extract the remaining part of the payload as the actual message
+    std::getline(iss, actualMessage);
+    actualMessage.erase(0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
+  } else {
+    std::cerr << "[ERROR] Malformed message payload: " << payload << "\n";
+  }
+
+  return actualMessage;
 }
 
-Node::Node(std::string name, const std::string &ip, int port, double x, double y, double z,
+Node::Node(std::string name, const std::string &ip, int port, std::pair<double, double> coords,
            NetworkManager &networkManager)
-    : id(generateUUID()), name(std::move(name)), ip(ip), port(port), x(x), y(y), z(z),
+    : id(generateUUID()), name(std::move(name)), ip(ip), port(port), coords(std::move(coords)),
       networkManager(networkManager) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));

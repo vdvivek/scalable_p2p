@@ -77,9 +77,15 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
   }
 
   std::string action = root["action"].asString();
+  std::pair<double, double> coords = {std::stod(root["x"].asString()),
+                                      std::stod(root["y"].asString())};
+  std::string coordsString =
+      "(" + std::to_string(coords.first) + ", " + std::to_string(coords.second) + ")";
 
   if (action == "register") {
-    NodeInfo node = {root["name"].asString(), root["ip"].asString(), root["port"].asInt()};
+    std::cout << "[DEBUG1] " << coordsString << std::endl;
+    NodeInfo node = {root["name"].asString(), root["ip"].asString(), coordsString,
+                     root["port"].asInt()};
     registerNode(node);
     response = R"({"message": "Node registered successfully"})";
   } else if (action == "deregister") {
@@ -99,7 +105,7 @@ void NexusRegistryServer::registerNode(const NodeInfo &node) {
   std::lock_guard<std::mutex> lock(nodesMutex);
   nodes.push_back(node);
   std::cout << "[INFO] Registered node: " << node.name << " (" << node.ip << ":" << node.port << ")"
-            << std::endl;
+            << "at " << node.coords << "." << std::endl;
 }
 
 void NexusRegistryServer::deregisterNode(const std::string &name) {
@@ -118,6 +124,7 @@ std::string NexusRegistryServer::getNodeList() {
     n["name"] = node.name;
     n["ip"] = node.ip;
     n["port"] = node.port;
+    n["coords"] = node.coords;
     root.append(n);
   }
   Json::StreamWriterBuilder writer;

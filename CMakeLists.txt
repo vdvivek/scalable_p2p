@@ -15,6 +15,8 @@ link_directories(/opt/homebrew/Cellar/jsoncpp/1.9.6/lib)
 set(SHARED_SOURCES
         src/Node.cpp
         src/NetworkManager.cpp
+        src/GroundNode.cpp
+        src/SatelliteNode.cpp
 )
 
 set(NEXUS_SRC
