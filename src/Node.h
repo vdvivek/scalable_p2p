@@ -2,15 +2,20 @@
 #define NODE_H
 
 #include "NetworkManager.h"
+#include "packet.hpp"
 
 #include <arpa/inet.h>
+#include <chrono>
 #include <cstring>
+#include <dirent.h>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <netinet/in.h>
 #include <random>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <unistd.h> // For close()
 
 class Node {
@@ -34,11 +39,11 @@ public:
   virtual void sendMessage(const std::string &targetName, const std::string &targetIP,
                            int targetPort, const std::string &message);
 
-  virtual void sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
-                        const std::string &fileName);
+  virtual void sendTo(const std::string &targetIP, int targetPort, alice::Packet &pkt);
 
-  static std::string extractMessage(const std::string &payload, std::string &senderName,
-                                    std::string &targetIP, int &targetPort);
+  virtual void sendFile(const std::string &targetIP, int targetPort, const std::string &fileName);
+
+  virtual alice::Packet extractMessage(const std::vector<uint8_t> &payload);
 
 protected:
   std::string id;
@@ -54,6 +59,9 @@ protected:
 
 private:
   static std::string generateUUID();
+  void processMessage(alice::Packet &pkt);
+  void writeToFile(alice::Packet &pkt);
+  void reassembleFile(alice::Packet &pkt);
 };
 
 #endif

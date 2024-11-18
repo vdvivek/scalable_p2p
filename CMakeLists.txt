@@ -17,8 +17,12 @@ set(SHARED_SOURCES
         src/NetworkManager.cpp
 )
 
+set(NEXUS_SRC
+        "src/packet.cpp"
+)
+
 # Nexus executable
-add_executable(nexus nexus_main/main.cpp ${SHARED_SOURCES})
+add_executable(nexus nexus_main/main.cpp ${SHARED_SOURCES} ${NEXUS_SRC})
 if(${CURL_FOUND} AND ${jsoncpp_FOUND})
         target_link_libraries(nexus CURL::libcurl jsoncpp)
 else(${CURL_FOUND} AND ${jsoncpp_FOUND})
@@ -32,3 +36,5 @@ if(${CURL_FOUND} AND ${jsoncpp_FOUND})
 else(${CURL_FOUND} AND ${jsoncpp_FOUND})
         target_link_libraries(registry_server jsoncpp /opt/homebrew/opt/curl/lib/libcurl.dylib)
 endif(${CURL_FOUND} AND ${jsoncpp_FOUND})
+
+target_include_directories(nexus PRIVATE "${PROJECT_SOURCE_DIR}/src/")

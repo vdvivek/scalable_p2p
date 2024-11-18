@@ -55,9 +55,6 @@ void handleInput(const std::shared_ptr<Node> &node) {
         std::cerr << "[ERROR] Message cannot be empty." << std::endl;
       }
     } else if (command == "file") {
-      std::cout << "Enter target node name: ";
-      std::cin >> targetName;
-
       std::cout << "Enter target IP: ";
       std::cin >> targetIP;
 
@@ -65,16 +62,14 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::cin >> targetPort;
 
       std::cout << "Enter file name: ";
-      std::getline(std::cin, message);
+      std::cin >> message;
 
       if (message.empty()) {
         std::cerr << "[ERROR] File name cannot be empty." << std::endl;
         continue;
       }
 
-      std::string fileName =
-          node->getName() + " " + targetIP + " " + std::to_string(targetPort) + " " + message;
-      node->sendMessage(targetName, targetIP, targetPort, fileName);
+      node->sendFile(targetIP, targetPort, message);
 
     } else if (command == "list") {
       networkManager.listNodes(); // Call listNodes to print node details
