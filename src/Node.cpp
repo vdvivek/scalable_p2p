@@ -1,4 +1,5 @@
 #include "Node.h"
+#include "Utility.h"
 
 std::string Node::getId() const { return id; }
 std::string Node::getName() const { return name; }
@@ -227,7 +228,7 @@ void Node::receiveMessage(std::string &message) {
   if ((pkt.tAddress == addr.sin_addr.s_addr) && (pkt.tPort == htons(port))) {
     processMessage(pkt);
   } else {
-    std::cout << "[NEXUS] Receiaved message from " << senderIP << ":" << senderPort << "\n";
+    std::cout << "[NEXUS] Received message from " << senderIP << ":" << senderPort << "\n";
 
     // Send to specified node
     // Extract specified final node
@@ -237,6 +238,8 @@ void Node::receiveMessage(std::string &message) {
 
 void Node::updatePosition() {
   std::cout << "[NEXUS] Node " << name << " is currently stationary." << std::endl;
+  coords.first = roundToTwoDecimalPlaces(coords.first);
+  coords.second = roundToTwoDecimalPlaces(coords.second);
 }
 
 void Node::processMessage(Packet &pkt) {

@@ -21,10 +21,11 @@ void printUsage() {
 
 void printCommands() {
   std::cout << "[USAGE] Available commands:\n";
-  std::cout << "[USAGE] send  - Send a message.\n";
-  std::cout << "[USAGE] list  - List nodes in the current p2p network.\n";
-  std::cout << "[USAGE] help  - Display help.\n";
-  std::cout << "[USAGE] q     - Quit the application.\n";
+  std::cout << "[USAGE] message - Send a message.\n";
+  std::cout << "[USAGE] file    - Send a file.\n";
+  std::cout << "[USAGE] list    - List nodes in the current p2p network.\n";
+  std::cout << "[USAGE] help    - Display help.\n";
+  std::cout << "[USAGE] q       - Quit the application.\n";
 }
 
 void receiverFunction(const std::shared_ptr<Node> &node) {
@@ -72,11 +73,17 @@ void handleInput(const std::shared_ptr<Node> &node) {
         std::cerr << "[ERROR] Message cannot be empty." << std::endl;
       }
     } else if (command == "file") {
+      std::cout << "Enter target node name: ";
+      std::cin >> targetName;
+
       std::cout << "Enter target IP: ";
       std::cin >> targetIP;
 
       std::cout << "Enter target port: ";
       std::cin >> targetPort;
+
+      // Clear the input buffer before reading the message
+      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
       std::cout << "Enter file name: ";
       std::cin >> message;
@@ -87,8 +94,6 @@ void handleInput(const std::shared_ptr<Node> &node) {
       }
 
       node->sendFile(targetIP, targetPort, message);
-
-      // networkManager.listNodes();
     } else if (command == "list") {
       networkManager.listNodes(); // Call listNodes to print node details
     }
@@ -151,6 +156,7 @@ int main(int argc, char **argv) {
   if (nodeType == "ground") {
     node = std::make_shared<GroundNode>(name, ip, port, coords, networkManager);
     std::cout << "[INFO] Creating a GroundNode..." << std::endl;
+    node->updatePosition();
   } else if (nodeType == "satellite") {
     auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, coords, networkManager);
     node = satelliteNode;

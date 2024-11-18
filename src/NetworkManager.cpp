@@ -80,6 +80,7 @@ bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node> &node)
   std::string url = registryAddress + "/register";
   Json::Value payload;
   payload["action"] = "register";
+  payload["name"] = node->getName();
   payload["ip"] = node->getIP();
   payload["port"] = node->getPort();
   auto coords = node->getCoords();
