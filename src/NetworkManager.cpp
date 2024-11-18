@@ -2,28 +2,57 @@
 #include <json/json.h>
 #include <curl/curl.h> // Requires libcurl
 #include <iostream>
+#include <unordered_map>
+#include <queue>
 
 #include "Node.h"
 #include "SatelliteNode.h"
+#include "GroundNode.h"
 
 NetworkManager::NetworkManager(const std::string& registryAddress)
     : registryAddress(registryAddress) {}
 
+
+std::shared_ptr<Node> NetworkManager::createNode(Node::NodeType type, const std::string& name, 
+                                                 const std::string& ip, int port, 
+                                                 const std::pair<double, double>& coords) {
+    std::shared_ptr<Node> node;
+
+    if (type == Node::NodeType::Ground) {
+        std::cout << "[INFO] Creating GroundNode: " << name << " at " << ip << ":" << port << std::endl;
+        node = std::make_shared<GroundNode>(name, ip, port, coords, *this, Node::NodeType::Ground);
+    } else if (type == Node::NodeType::Satellite) {
+        std::cout << "[INFO] Creating SatelliteNode: " << name << " at " << ip << ":" << port << std::endl;
+        node = std::make_shared<SatelliteNode>(name, ip, port, coords, *this, Node::NodeType::Satellite);
+    } else {
+        std::cerr << "[ERROR] Unknown NodeType specified. Node creation failed." << std::endl;
+        return nullptr;
+    }
+
+    addNode(node);
+    return node;
+}
+
+
 void NetworkManager::addNode(const std::shared_ptr<Node>& node) {
-    // Check if the node already exists in the list, return if it does
+    // Check if the node already exists to prevent duplicates
     for (const auto& existingNode : nodes) {
         if (existingNode->getName() == node->getName() &&
             existingNode->getIP() == node->getIP() &&
             existingNode->getPort() == node->getPort()) {
-            return;
-            }
+            std::cerr << "[WARNING] Duplicate node detected: " << node->getName() << std::endl;
+            return; // Do not add duplicate node
+        }
     }
 
-    // Add the node to the list if not present
+    // Add the node to the list
     nodes.push_back(node);
-    std::cout << "[INFO] Added node: " << node->getName() << " (" << node->getId() << ") at "
-              << node->getIP() << ":" << node->getPort() << " to the network." << std::endl;
+    std::cout << "[INFO] Added node: " << node->getName() 
+              << " (" << node->getId() << ") at " << node->getIP() << ":" 
+              << node->getPort() << " to the network. Type: " 
+              << node->getNodeTypeAsString() << std::endl;
 }
+
 
 
 void NetworkManager::removeNode(const std::string &id) {
@@ -40,14 +69,52 @@ void NetworkManager::removeNode(const std::string &id) {
     }
 }
 
+// std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
+//     std::cout<<"Inside get satellite"<<std::endl;
+//     std::vector<std::shared_ptr<Node>> satellites;
+//     for (const auto& node : nodes) {
+//         if (std::dynamic_pointer_cast<SatelliteNode>(node)) {
+//             satellites.push_back(node);
+//             std::cout << "[DEBUG] Found satellite: " << node->getName() << std::endl;
+//         }
+//     }
+//     return satellites;
+// }
+// std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
+//     std::cout << "Inside getSatelliteNodes()" << std::endl;
+
+//     std::vector<std::shared_ptr<Node>> satellites;
+
+//     // Fetch registered nodes
+//     for (const auto& node : nodes) {
+//         // Check if the node is a SatelliteNode
+//         auto satellite = std::dynamic_pointer_cast<SatelliteNode>(node);
+//         if (satellite) {
+//             satellites.push_back(satellite);
+//             std::cout << "[DEBUG] Found satellite: " << node->getName() 
+//                       << " at " << node->getIP() << ":" << node->getPort() 
+//                       << " [" << node->getCoords().first << ", " << node->getCoords().second << "]" 
+//                       << std::endl;
+//         }
+//     }
+
+//     if (satellites.empty()) {
+//         std::cerr << "[WARNING] No satellites found among registered nodes." << std::endl;
+//     }
+
+//     return satellites;
+// }
+
 std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
     std::vector<std::shared_ptr<Node>> satellites;
 
     for (const auto& node : nodes) {
-        if (dynamic_cast<SatelliteNode*>(node.get())) {
+        if (node->getNodeTypeAsString() == "Satellite") {
             satellites.push_back(node);
+            std::cout << "[DEBUG] Found satellite: " << node->getName() << std::endl;
         }
     }
+
     return satellites;
 }
 
@@ -155,7 +222,6 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     return 0;
 }
 
-
 void NetworkManager::fetchNodesFromRegistry() {
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -173,37 +239,26 @@ void NetworkManager::fetchNodesFromRegistry() {
     payload["action"] = "list";
     std::string payloadStr = payload.toStyledString();
 
-    struct curl_slist* headers = NULL;
+    struct curl_slist* headers = nullptr;
     headers = curl_slist_append(headers, "Accept: application/json");
     headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "charsets: utf-8");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // Enable verbose logging for CURL
-
-    // Perform the request
     CURLcode res = curl_easy_perform(curl);
-
-    if (response.empty()) {
-        std::cerr << "[ERROR] Received empty response from registry." << std::endl;
-        curl_easy_cleanup(curl);
-        return;
-    }
 
     if (res != CURLE_OK) {
         std::cerr << "[ERROR] Failed to fetch node list: " << curl_easy_strerror(res) << std::endl;
         curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
         return;
     }
 
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
-    // Parse the JSON response
     Json::Value nodeListJson;
     Json::CharReaderBuilder reader;
     std::string errs;
@@ -214,28 +269,66 @@ void NetworkManager::fetchNodesFromRegistry() {
         return;
     }
 
-    if (!nodeListJson.isArray()) {
-        std::cerr << "[ERROR] Unexpected response format: Expected an array." << std::endl;
-        return;
-    }
+    nodes.clear();
 
-    // Process each node in the response
     for (const auto& nodeJson : nodeListJson) {
         if (!nodeJson.isObject() || !nodeJson.isMember("name") || !nodeJson.isMember("ip") || !nodeJson.isMember("port")) {
-            std::cerr << "[ERROR] Malformed node entry in response: " << nodeJson << std::endl;
+            std::cerr << "[ERROR] Malformed node entry: " << nodeJson << std::endl;
             continue;
         }
 
-        double x = nodeJson.isMember("x") ? nodeJson["x"].asDouble() : 0.0;
-        double y = nodeJson.isMember("y") ? nodeJson["y"].asDouble() : 0.0;
-        
-        auto node = std::make_shared<Node>(
-            nodeJson["name"].asString(),
-            nodeJson["ip"].asString(),
-            nodeJson["port"].asInt(),
-            std::make_pair(x, y), // Pass coordinates as pair
-            *this
-        );
-        addNode(node);
+        std::string type = nodeJson["type"].asString(); // Expect a "type" field to distinguish node types
+        std::string name = nodeJson["name"].asString();
+        std::string ip = nodeJson["ip"].asString();
+        int port = nodeJson["port"].asInt();
+        double x = nodeJson["x"].asDouble();
+        double y = nodeJson["y"].asDouble();
+
+        std::shared_ptr<Node> node;
+        if (type == "satellite") {
+            node = std::make_shared<SatelliteNode>(name, ip, port, std::make_pair(x, y), *this,Node::NodeType::Satellite);
+            
+
+            std::cout << "[DEBUG] fetchNodesFromRegistry called. Total nodes: " << nodes.size() << std::endl;
+
+
+        } else {
+            node = std::make_shared<GroundNode>(name, ip, port, std::make_pair(x, y), *this,Node::NodeType::Ground);
+            
+
+            std::cout << "[DEBUG] fetchNodesFromRegistry called. Total nodes: " << nodes.size() << std::endl;
+        }
+
+        nodes.push_back(node);
+        std::cout << "[DEBUG] Fetched node: " << node->getName() 
+                  << " (" << node->getIP() << ":" << node->getPort() 
+                  << ") of type " << type << " [" << x << ", " << y << "]" << std::endl;
     }
+
+    std::cout << "[DEBUG] Total nodes in NetworkManager: " << nodes.size() << std::endl;
 }
+
+
+std::shared_ptr<Node> NetworkManager::getNodeByName(const std::string& name) const {
+    for (const auto& node : nodes) {
+        std::cout << "[DEBUG] Checking node: " << node->getName() << " against " << name << std::endl;
+        if (node->getName() == name) {
+            return node;
+        }
+    }
+    std::cerr << "[ERROR] Target node not found: " << name << std::endl;
+    return nullptr;
+}
+
+
+
+std::shared_ptr<Node> NetworkManager::getNextHop(const std::shared_ptr<Node>& current, const std::string& targetIP, int targetPort) {
+    for (const auto& node : nodes) {
+        if (node->getIP() == targetIP && node->getPort() == targetPort) {
+            return node;
+        }
+    }
+    return nullptr;
+}
+
+

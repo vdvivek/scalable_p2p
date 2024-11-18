@@ -4,6 +4,13 @@
 #include <cstring>
 #include <unistd.h>
 #include <json/json.h>
+#include <sys/socket.h>  // For socket(), bind(), listen(), etc.
+#include <netinet/in.h>  // For sockaddr_in and constants like AF_INET
+#include <arpa/inet.h>   // For inet_pton() and inet_ntoa()
+#include <unistd.h>      // For close()
+#include <cstring> 
+
+
 
 
 NexusRegistryServer::NexusRegistryServer(int port) : port(port), isRunning(false) {}
@@ -78,12 +85,19 @@ void NexusRegistryServer::processRequest(const std::string& request, std::string
     }
 
     std::string action = root["action"].asString();
+    std::cout<<"action = "+action;
 
     if (action == "register") {
-        NodeInfo node = { root["name"].asString(), root["ip"].asString(), root["coords"].asString(), root["port"].asInt() };
+        NodeInfo node;
+        node.name = root["name"].asString();
+        node.ip = root["ip"].asString();
+        node.port = root["port"].asInt();
+        node.coords = {root["x"].asDouble(), root["y"].asDouble()}; // Parse coordinates
         registerNode(node);
         response = R"({"message": "Node registered successfully"})";
-    } else if (action == "deregister") {
+    }
+
+     else if (action == "deregister") {
         deregisterNode(root["name"].asString());
         response = R"({"message": "Node deregistered successfully"})";
     } else if (action == "list") {
@@ -99,7 +113,8 @@ void NexusRegistryServer::processRequest(const std::string& request, std::string
 void NexusRegistryServer::registerNode(const NodeInfo& node) {
     std::lock_guard<std::mutex> lock(nodesMutex);
     nodes.push_back(node);
-    std::cout << "[INFO] Registered node: " << node.name << " (" << node.ip << ":" << node.port << ")" << "at " << node.coords << "." << std::endl;
+    std::cout << "[INFO] Registered node: " << node.name << " (" << node.ip << ":" << node.port 
+              << ") at (" << node.coords.first << ", " << node.coords.second << ")." << std::endl;
 }
 
 void NexusRegistryServer::deregisterNode(const std::string& name) {
@@ -117,11 +132,16 @@ std::string NexusRegistryServer::getNodeList() {
         n["name"] = node.name;
         n["ip"] = node.ip;
         n["port"] = node.port;
-        n["coords"] = node.coords;
+         n["x"] = node.coords.first;  // Serialize x-coordinate
+        n["y"] = node.coords.second; // Serialize y-coordinate
         root.append(n);
     }
     Json::StreamWriterBuilder writer;
-    return Json::writeString(writer, root);
+    std::string nodeList = Json::writeString(writer, root);
+    std::cout << "[DEBUG] Returning node list: " << nodeList << std::endl;
+    return nodeList;
+    // Json::StreamWriterBuilder writer;
+    // return Json::writeString(writer, root);
 }
 
 std::string NexusRegistryServer::readFromSocket(int socket) {

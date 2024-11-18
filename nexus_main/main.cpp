@@ -1,8 +1,6 @@
 #include <iostream>
 #include <thread>
 #include <atomic>
-#include <cstring>
-
 #include "../src/Node.h"
 #include "../src/NetworkManager.h"
 #include "../src/GroundNode.h"
@@ -35,6 +33,20 @@ void receiverFunction(const std::shared_ptr<Node>& node) {
     }
 }
 
+void routingTableUpdateFunction(const std::shared_ptr<GroundNode>& groundNode) {
+    while (isRunning) {
+        groundNode->updateRoutingTable();
+        std::this_thread::sleep_for(std::chrono::seconds(5)); // Update every 5 seconds
+    }
+}
+
+void satellitePositionUpdateFunction(const std::shared_ptr<SatelliteNode>& satelliteNode) {
+    while (isRunning) {
+        satelliteNode->updatePosition();
+        std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every 2 seconds
+    }
+}
+
 void handleInput(const std::shared_ptr<Node>& node) {
     std::string command, targetName, targetIP, message;
     int targetPort;
@@ -43,7 +55,6 @@ void handleInput(const std::shared_ptr<Node>& node) {
         std::cout << node->getName() << " prompt: ";
         std::cin >> command;
 
-        // Handle "send" command
         if (command == "send") {
             std::cout << "Enter target node name: ";
             std::cin >> targetName;
@@ -66,28 +77,22 @@ void handleInput(const std::shared_ptr<Node>& node) {
             } else {
                 std::cerr << "[ERROR] Message cannot be empty." << std::endl;
             }
-        }
-        else if (command == "list") {
-            networkManager.listNodes(); // Call listNodes to print node details
-        }
-        // Handle "q" for quitting
-        else if (command == "q") {
-            std::cout << "[INFO] Goodbye..." << std::endl;
-            isRunning = false; // Signal shutdown
-            break;
+        } else if (command == "list") {
+            networkManager.listNodes();
         } else if (command == "help") {
             printCommands();
-        }
-        // Handle unknown commands
-        else {
+        } else if (command == "q") {
+            std::cout << "[INFO] Goodbye..." << std::endl;
+            isRunning = false;
+            break;
+        } else {
             std::cerr << "[ERROR] Unknown command.\n";
             printCommands();
         }
     }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     if (argc != 13) {
         printUsage();
         return 1;
@@ -126,25 +131,18 @@ int main(int argc, char **argv)
 
     std::shared_ptr<Node> node;
     std::thread positionUpdateThread;
+    std::thread routingUpdateThread;
 
-    if (nodeType == "ground") {
-        node = std::make_shared<GroundNode>(name, ip, port, coords, networkManager);
-        std::cout << "[INFO] Creating a GroundNode..." << std::endl;
-    } else if (nodeType == "satellite") {
-        auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, coords, networkManager);
-        node = satelliteNode;
+   if (nodeType == "ground") {
+    node = networkManager.createNode(Node::NodeType::Ground, name, ip, port, coords);
+    auto groundNode = std::dynamic_pointer_cast<GroundNode>(node);
+    routingUpdateThread = std::thread(routingTableUpdateFunction, groundNode);
+} else if (nodeType == "satellite") {
+    node = networkManager.createNode(Node::NodeType::Satellite, name, ip, port, coords);
+    auto satelliteNode = std::dynamic_pointer_cast<SatelliteNode>(node);
+    positionUpdateThread = std::thread(satellitePositionUpdateFunction, satelliteNode);
+}
 
-        // Create a thread to update position periodically
-        positionUpdateThread = std::thread([satelliteNode]() {
-            while (isRunning) {
-                satelliteNode->updatePosition();
-                std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every second
-            }
-        });
-
-
-        std::cout << "[INFO] Creating a SatelliteNode..." << std::endl;
-    }
 
     networkManager.registerNodeWithRegistry(node);
 
@@ -153,19 +151,12 @@ int main(int argc, char **argv)
         return 4;
     }
 
-    std::cout << "[NEXUS] " << node->getName() << " is ready for UDP communication at " << node->getIP() << ":" << node->getPort() << "" << std::endl;
+    std::cout << "[NEXUS] " << node->getName() << " is ready for UDP communication at " << node->getIP() << ":" << node->getPort() << std::endl;
     std::cout << "[NEXUS] Node is running. Press Ctrl+C OR q to terminate." << std::endl;
 
     std::thread receiverThread(receiverFunction, node);
 
     handleInput(node);
-
-    if (!networkManager.registerNodeWithRegistry(node)) {
-        std::cerr << "[ERROR] Failed to register node with the registry server." << std::endl;
-        return 5;
-    }
-
-    networkManager.fetchNodesFromRegistry();
 
     isRunning = false;
 
@@ -175,6 +166,10 @@ int main(int argc, char **argv)
 
     if (positionUpdateThread.joinable()) {
         positionUpdateThread.join();
+    }
+
+    if (routingUpdateThread.joinable()) {
+        routingUpdateThread.join();
     }
 
     return 0;
