@@ -22,7 +22,13 @@ set(SHARED_SOURCES
 set(NEXUS_SRC
         src/Packet.cpp
         src/Utility.cpp
+        src/NodeType.h
 )
+
+set(REGISTRY_SRC
+        src/Utility.cpp
+)
+
 
 # Nexus executable
 add_executable(nexus nexus_main/main.cpp ${SHARED_SOURCES} ${NEXUS_SRC})
@@ -33,7 +39,8 @@ else(${CURL_FOUND} AND ${jsoncpp_FOUND})
 endif(${CURL_FOUND} AND ${jsoncpp_FOUND})
 
 # Registry Server executable
-add_executable(registry_server registry_main/main.cpp src/NexusRegistryServer.cpp)
+add_executable(registry_server registry_main/main.cpp src/NexusRegistryServer.cpp ${REGISTRY_SRC})
+
 if(${CURL_FOUND} AND ${jsoncpp_FOUND})
         target_link_libraries(registry_server CURL::libcurl jsoncpp)
 else(${CURL_FOUND} AND ${jsoncpp_FOUND})
@@ -41,3 +48,4 @@ else(${CURL_FOUND} AND ${jsoncpp_FOUND})
 endif(${CURL_FOUND} AND ${jsoncpp_FOUND})
 
 target_include_directories(nexus PRIVATE "${PROJECT_SOURCE_DIR}/src/")
+target_include_directories(registry_server PRIVATE "${PROJECT_SOURCE_DIR}/src/")

@@ -1,14 +1,20 @@
 #ifndef NEXUS_REGISTRY_SERVER_H
 #define NEXUS_REGISTRY_SERVER_H
 
+#include <iostream>
+#include <json/json.h>
 #include <mutex>
 #include <netinet/in.h>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
+#include "Utility.h"
+
 struct NodeInfo {
+  std::string type;
   std::string name;
   std::string ip;
   std::pair<double, double> coords;

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <json/json.h>
 
+#include "GroundNode.h"
 #include "Node.h"
 #include "SatelliteNode.h"
 
@@ -10,10 +11,15 @@ NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
 void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
+  // std::cout << "[DEBUG4] In addNode" << std::endl;
   // Check if the node already exists in the list, return if it does
   for (const auto &existingNode : nodes) {
+    // std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
     if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
         existingNode->getPort() == node->getPort()) {
+
+      //  TODO: Check logic
+      existingNode->setCoords(node->getCoords());
       return;
     }
   }
@@ -41,7 +47,9 @@ std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
 
   for (const auto &node : nodes) {
-    if (dynamic_cast<SatelliteNode *>(node.get())) {
+    std::cout << "[DEBUG6] Found node in getSatelliteNodes: " << node->getName() << std::endl;
+    if (node->getType() == NodeType::SATELLITE) {
+      std::cout << "[DEBUG3] Found satellite: " << node->getName() << std::endl;
       satellites.push_back(node);
     }
   }
@@ -61,9 +69,9 @@ void NetworkManager::listNodes() const {
   for (const auto &node : nodes) {
     if (node) {
       auto coords = node->getCoords();
-      std::cout << node->getName() << " (" << node->getId() << ") at " << node->getIP() << ":"
-                << node->getPort() << " [" << coords.first << ", " << coords.second << "]"
-                << std::endl;
+      std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " ("
+                << node->getId() << ") at " << node->getIP() << ":" << node->getPort() << " ["
+                << coords.first << ", " << coords.second << "]" << std::endl;
     } else {
       std::cerr << "[WARNING] Encountered a null node entry in the network." << std::endl;
     }
@@ -80,6 +88,7 @@ bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node> &node)
   std::string url = registryAddress + "/register";
   Json::Value payload;
   payload["action"] = "register";
+  payload["type"] = NodeType::toString(node->getType());
   payload["name"] = node->getName();
   payload["ip"] = node->getIP();
   payload["port"] = node->getPort();
@@ -116,6 +125,7 @@ void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node> &nod
   std::string url = registryAddress + "/deregister";
   Json::Value payload;
   payload["action"] = "deregister";
+  payload["type"] = NodeType::toString(node->getType());
   payload["name"] = node->getName();
   payload["ip"] = node->getIP();
   payload["port"] = node->getPort();
@@ -151,6 +161,8 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::stri
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
+  // std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
+
   CURL *curl = curl_easy_init();
   if (!curl) {
     std::cerr << "[ERROR] Failed to initialize CURL for fetching nodes." << std::endl;
@@ -236,12 +248,131 @@ void NetworkManager::fetchNodesFromRegistry() {
 
       double x = nodeJson.isMember("x") ? nodeJson["x"].asDouble() : 0.0;
       double y = nodeJson.isMember("y") ? nodeJson["y"].asDouble() : 0.0;
+      NodeType::Type nodeTypeEnum = NodeType::fromString(nodeJson["type"].asString());
 
-      auto node = std::make_shared<Node>(nodeJson["name"].asString(), nodeJson["ip"].asString(),
-                                         nodeJson["port"].asInt(),
-                                         std::make_pair(x, y), // Pass coordinates as pair
-                                         *this);
+      std::shared_ptr<Node> node;
+      if (nodeTypeEnum == NodeType::GROUND) {
+        node = std::make_shared<GroundNode>(nodeTypeEnum, nodeJson["name"].asString(),
+                                            nodeJson["ip"].asString(), nodeJson["port"].asInt(),
+                                            std::make_pair(x, y), *this);
+      } else if (nodeTypeEnum == NodeType::SATELLITE) {
+        node = std::make_shared<SatelliteNode>(nodeTypeEnum, nodeJson["name"].asString(),
+                                               nodeJson["ip"].asString(), nodeJson["port"].asInt(),
+                                               std::make_pair(x, y), *this);
+      } else {
+        std::cerr << "[ERROR] Unknown NodeType: " << nodeTypeEnum << std::endl;
+        return; // Or handle the error as appropriate
+      }
+
       addNode(node);
     }
   }
+}
+
+void NetworkManager::createRoutingTable() {
+  topology.clear();
+  topology.resize(nodes.size());
+
+  for (int i = 0; i < nodes.size(); i++) {
+    topology[i] = std::vector<int>(nodes.size(), 0);
+  }
+}
+
+void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
+  if (nodes.size() != topology.size()) {
+    createRoutingTable();
+  }
+
+  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < nodes.size(); j++) {
+      auto i_coords = nodes[i]->getCoords();
+      auto j_coords = nodes[j]->getCoords();
+
+      int x_diff = std::pow(i_coords.first - j_coords.first, 2);
+      int y_diff = std::pow(i_coords.second - j_coords.second, 2);
+
+      int weight = 0;
+
+      auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
+      auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
+
+      if (i_isGround && j_isGround) {
+        weight += 10000; // PRIORITIZE SATELLITE
+      } else if (i_isGround) {
+        weight += 50;
+      } else if (j_isGround) {
+        weight += 50;
+      }
+
+      // Add any extra weight
+      topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
+      topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
+    }
+  }
+
+  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < nodes.size(); j++) {
+      std::cout << topology[i][j] << "\t";
+    }
+    std::cout << std::endl;
+  }
+
+  int src_idx = 0;
+  for (int i = 0; i < nodes.size(); i++) {
+    if (nodes[i]->getId() == src->getId()) {
+      src_idx = i;
+      break;
+    }
+  }
+
+  route(src_idx);
+}
+
+void NetworkManager::route(int src_idx) {
+  if (nextHop.size() != nodes.size())
+    nextHop.resize(nodes.size());
+
+  for (int i = 0; i < nodes.size(); i++) {
+    nextHop[i] = i;
+  }
+
+  std::vector<bool> visited(nodes.size(), false);
+  std::vector<int> minDist(nodes.size(), INT_MAX);
+  minDist[src_idx] = 0;
+
+  for (int i = 0; i < nodes.size(); i++) {
+    int minUnvisited = INT_MAX, minUnvIdx;
+
+    for (int j = 0; j < nodes.size(); j++) {
+      if (!visited[j] && minDist[j] <= minUnvisited) {
+        minUnvisited = minDist[j];
+        minUnvIdx = j;
+      }
+    }
+
+    visited[minUnvIdx] = true;
+
+    for (int j = 0; j < nodes.size(); j++) {
+      if (!visited[j] && topology[minUnvIdx][j] != 0 &&
+          minDist[minUnvIdx] + topology[minUnvIdx][j] < minDist[j]) {
+        minDist[j] = minDist[minUnvIdx] + topology[minUnvIdx][j];
+        if (minUnvIdx == src_idx)
+          continue;
+        nextHop[j] = minUnvIdx;
+      }
+    }
+  }
+}
+
+std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
+  int n_idx = -1;
+
+  for (int i = 0; i < nodes.size(); i++) {
+    if (nodes[i]->getName() == name) {
+      n_idx = i;
+      break;
+    }
+  }
+
+  return nodes[nextHop[n_idx]];
 }

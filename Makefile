@@ -1,6 +1,6 @@
 # Compiler and standard
 CXX = g++
-CXXFLAGS = -std=c++11 -pthread -g
+CXXFLAGS = -std=c++11 -pthread -g -Wno-psabi
 
 # Detect OS
 UNAME := $(shell uname)

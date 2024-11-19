@@ -24,6 +24,10 @@ struct Packet {
   uint16_t fragmentCount;
   uint32_t errorCorrectionCode;
 
+  // Routing metadata
+  std::vector<uint32_t> route; // List of node IPs to traverse
+  uint16_t currentHop;         // Current hop in the route
+
   std::array<uint8_t, MAX_BUFFER_SIZE> data;
 
   Packet();
@@ -31,6 +35,12 @@ struct Packet {
 
   std::vector<uint8_t> serialize();
   static Packet deserialize(const std::vector<uint8_t> &buffer);
+
+  void computeCRC();
+  bool verifyCRC();
+
+private:
+  static uint32_t calculateCRC(const std::vector<uint8_t> &data);
 };
 
 #endif

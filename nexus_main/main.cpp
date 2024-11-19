@@ -8,7 +8,10 @@
 #include "../src/GroundNode.h"
 #include "../src/NetworkManager.h"
 #include "../src/Node.h" // Any issue here?
+#include "../src/NodeType.h"
 #include "../src/SatelliteNode.h"
+
+const int UPDATE_INTERVAL = 30;
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
@@ -93,7 +96,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
         continue;
       }
 
-      node->sendFile(targetIP, targetPort, message);
+      node->sendFile(targetName, targetIP, targetPort, message);
     } else if (command == "list") {
       networkManager.listNodes(); // Call listNodes to print node details
     }
@@ -144,7 +147,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (nodeType != "ground" && nodeType != "satellite") {
+  NodeType::Type nodeTypeEnum = NodeType::fromString(nodeType);
+  std::cout << nodeType << std::endl;
+
+  if (nodeTypeEnum != NodeType::GROUND && nodeTypeEnum != NodeType::SATELLITE) {
     std::cerr << "[ERROR] Invalid node type. Must be 'ground' or 'satellite'." << std::endl;
     printUsage();
     return 3;
@@ -153,19 +159,20 @@ int main(int argc, char **argv) {
   std::shared_ptr<Node> node;
   std::thread positionUpdateThread;
 
-  if (nodeType == "ground") {
-    node = std::make_shared<GroundNode>(name, ip, port, coords, networkManager);
+  if (nodeTypeEnum == NodeType::GROUND) {
+    node = std::make_shared<GroundNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
     std::cout << "[INFO] Creating a GroundNode..." << std::endl;
     node->updatePosition();
-  } else if (nodeType == "satellite") {
-    auto satelliteNode = std::make_shared<SatelliteNode>(name, ip, port, coords, networkManager);
+  } else {
+    auto satelliteNode =
+        std::make_shared<SatelliteNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node = satelliteNode;
 
     // Create a thread to update position periodically
     positionUpdateThread = std::thread([satelliteNode]() {
       while (isRunning) {
         satelliteNode->updatePosition();
-        std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every second
+        std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every 2 second
       }
     });
 
@@ -185,14 +192,21 @@ int main(int argc, char **argv) {
 
   std::thread receiverThread(receiverFunction, node);
 
+  // Move to a function later
+  std::thread fetchNodeThread([node]() {
+    while (isRunning) {
+      networkManager.fetchNodesFromRegistry();
+      networkManager.updateRoutingTable(node);
+      std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
+    }
+  });
+
   handleInput(node);
 
   if (!networkManager.registerNodeWithRegistry(node)) {
     std::cerr << "[ERROR] Failed to register node with the registry server." << std::endl;
     return 5;
   }
-
-  networkManager.fetchNodesFromRegistry();
 
   isRunning = false;
 
@@ -202,6 +216,10 @@ int main(int argc, char **argv) {
 
   if (positionUpdateThread.joinable()) {
     positionUpdateThread.join();
+  }
+
+  if (fetchNodeThread.joinable()) {
+    fetchNodeThread.join();
   }
 
   return 0;

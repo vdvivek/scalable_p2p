@@ -2,6 +2,7 @@
 #define NODE_H
 
 #include "NetworkManager.h"
+#include "NodeType.h"
 #include "Packet.hpp"
 
 #include <arpa/inet.h>
@@ -20,9 +21,9 @@
 
 class Node {
 public:
-  Node(std::string name, const std::string &ip, int port, std::pair<double, double> coords,
-       NetworkManager &networkManager);
-  virtual ~Node();
+  Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
+       std::pair<double, double> coords, NetworkManager &networkManager);
+  virtual ~Node() = default;
 
   std::string getId() const;
   std::string getName() const;
@@ -31,8 +32,10 @@ public:
   std::pair<double, double> getCoords() const;
   void setCoords(const std::pair<double, double> &newCoords);
 
+  NodeType::Type getType() const;
+
   virtual bool bind();
-  virtual void updatePosition();
+  virtual void updatePosition() = 0;
 
   virtual void receiveMessage(std::string &message);
   virtual void sendMessage(const std::string &targetName, const std::string &targetIP,
@@ -40,12 +43,15 @@ public:
 
   virtual void sendTo(const std::string &targetIP, int targetPort, Packet &pkt);
 
-  virtual void sendFile(const std::string &targetIP, int targetPort, const std::string &fileName);
+  virtual void sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
+                        const std::string &fileName);
 
   virtual std::string extractMessage(const std::string &payload, std::string &senderName,
                                      std::string &targetIP, int &targetPort);
 
 protected:
+  NodeType::Type type;
+
   std::string id;
   std::string name;
   std::string ip;
