@@ -1,8 +1,8 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include "NodeType.h"
 #include "NetworkManager.h"
+#include "NodeType.h"
 #include "Packet.hpp"
 
 #include <arpa/inet.h>
@@ -21,8 +21,8 @@
 
 class Node {
 public:
-  Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords,
-       NetworkManager &networkManager);
+  Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
+       std::pair<double, double> coords, NetworkManager &networkManager);
   virtual ~Node() = default;
 
   std::string getId() const;

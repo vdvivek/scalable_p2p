@@ -17,6 +17,9 @@ void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
     // std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
     if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
         existingNode->getPort() == node->getPort()) {
+
+      //  TODO: Check logic
+      existingNode->setCoords(node->getCoords());
       return;
     }
   }
@@ -158,7 +161,7 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::stri
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
-  std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
+  // std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
 
   CURL *curl = curl_easy_init();
   if (!curl) {
@@ -264,4 +267,109 @@ void NetworkManager::fetchNodesFromRegistry() {
       addNode(node);
     }
   }
+}
+
+void NetworkManager::createRoutingTable() {
+  topology.clear();
+  topology.resize(nodes.size());
+
+  for (int i = 0; i < nodes.size(); i++) {
+    topology[i] = std::vector<int>(nodes.size(), 0);
+  }
+}
+
+void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
+  if (nodes.size() != topology.size()) {
+    createRoutingTable();
+  }
+
+  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < nodes.size(); j++) {
+      auto i_coords = nodes[i]->getCoords();
+      auto j_coords = nodes[j]->getCoords();
+
+      int x_diff = std::pow(i_coords.first - j_coords.first, 2);
+      int y_diff = std::pow(i_coords.second - j_coords.second, 2);
+
+      int weight = 0;
+
+      auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
+      auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
+
+      if (i_isGround && j_isGround) {
+        weight += 10000; // PRIORITIZE SATELLITE
+      } else if (i_isGround) {
+        weight += 50;
+      } else if (j_isGround) {
+        weight += 50;
+      }
+
+      // Add any extra weight
+      topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
+      topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
+    }
+  }
+
+  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < nodes.size(); j++) {
+      std::cout << topology[i][j] << "\t";
+    }
+    std::cout << std::endl;
+  }
+
+  int src_idx = 0;
+  for (int i = 0; i < nodes.size(); i++) {
+    if (nodes[i]->getId() == src->getId()) {
+      src_idx = i;
+      break;
+    }
+  }
+
+  route(src_idx);
+}
+
+void NetworkManager::route(int src_idx) {
+  if (nextHop.size() != nodes.size())
+    nextHop.resize(nodes.size());
+
+  for (int i = 0; i < nodes.size(); i++) {
+    nextHop[i] = i;
+  }
+
+  std::vector<bool> visited(nodes.size(), false);
+  std::vector<int> minDist(nodes.size(), INT_MAX);
+  minDist[src_idx] = 0;
+
+  for (int i = 0; i < nodes.size(); i++) {
+    int minUnvisited = INT_MAX, minUnvIdx;
+
+    for (int j = 0; j < nodes.size(); j++) {
+      if (!visited[j] && minDist[j] <= minUnvisited) {
+        minUnvisited = minDist[j];
+        minUnvIdx = j;
+      }
+    }
+
+    visited[minUnvIdx] = true;
+
+    for (int j = 0; j < nodes.size(); j++) {
+      if (!visited[j] && minDist[j] + topology[i][j] < minDist[j]) {
+        minDist[j] = minDist[i] + topology[i][j];
+        nextHop[j] = nextHop[i];
+      }
+    }
+  }
+}
+
+std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
+  int n_idx = -1;
+
+  for (int i = 0; i < nodes.size(); i++) {
+    if (nodes[i]->getName() == name) {
+      n_idx = i;
+      break;
+    }
+  }
+
+  return nodes[nextHop[n_idx]];
 }

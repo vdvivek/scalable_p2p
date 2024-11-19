@@ -191,9 +191,12 @@ int main(int argc, char **argv) {
   std::cout << "[NEXUS] Node is running. Press Ctrl+C OR q to terminate." << std::endl;
 
   std::thread receiverThread(receiverFunction, node);
-  std::thread fetchNodeThread([]() {
+
+  // Move to a function later
+  std::thread fetchNodeThread([node]() {
     while (isRunning) {
       networkManager.fetchNodesFromRegistry();
+      networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
     }
   });

@@ -9,9 +9,7 @@ int Node::getPort() const { return port; }
 std::pair<double, double> Node::getCoords() const { return coords; }
 void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
 
-NodeType::Type Node::getType() const{
-  return type;
-}
+NodeType::Type Node::getType() const { return type; }
 
 // Utility function to generate UUID
 std::string Node::generateUUID() {
@@ -65,10 +63,10 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
   return actualMessage;
 }
 
-Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords,
-           NetworkManager &networkManager)
-    : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port), coords(std::move(coords)),
-      networkManager(networkManager) {
+Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
+           std::pair<double, double> coords, NetworkManager &networkManager)
+    : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port),
+      coords(std::move(coords)), networkManager(networkManager) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -110,9 +108,15 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
 
   auto packet_data = pkt.serialize();
 
-  const int bytesSent =
-      sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
-             reinterpret_cast<struct sockaddr *>(&targetAddr), sizeof(targetAddr));
+  auto nextHop = networkManager.getNextHop(targetName);
+
+  struct sockaddr_in nextAddr = {};
+  nextAddr.sin_family = AF_INET;
+  nextAddr.sin_port = htons(nextHop->getPort());
+  inet_pton(AF_INET, nextHop->getIP().c_str(), &nextAddr.sin_addr);
+
+  const int bytesSent = sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
+                               reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
   if (bytesSent < 0) {
     std::cerr << "Failed to send message: " << strerror(errno) << std::endl;
   } else {

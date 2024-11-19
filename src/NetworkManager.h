@@ -1,9 +1,12 @@
 #ifndef NETWORKMANAGER_H
 #define NETWORKMANAGER_H
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
+
+using matrix = std::vector<std::vector<int>>;
 
 class Node;
 
@@ -21,7 +24,17 @@ public:
   void deregisterNodeWithRegistry(const std::shared_ptr<Node> &node);
   void fetchNodesFromRegistry();
 
+  void createRoutingTable();
+  void updateRoutingTable(const std::shared_ptr<Node> &node);
+
+  void route(int src_idx);
+  std::shared_ptr<Node> getNextHop(const std::string &name);
+
 private:
+  matrix topology;
+  // Holds index for next hop for given destination
+  // nextHop[S3 idx] = next node in the shortest path to S3
+  std::vector<int> nextHop;
   std::vector<std::shared_ptr<Node>> nodes;
   std::string registryAddress;
 };
