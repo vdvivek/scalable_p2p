@@ -35,6 +35,12 @@ struct Packet {
 
   std::vector<uint8_t> serialize();
   static Packet deserialize(const std::vector<uint8_t> &buffer);
+
+  void computeCRC();
+  bool verifyCRC();
+
+private:
+  static uint32_t calculateCRC(const std::vector<uint8_t> &data);
 };
 
 #endif

@@ -4,7 +4,7 @@ Packet::Packet() : version{PKT_VERSION} { std::fill(data.begin(), data.end(), 0)
 
 Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort, packetType type)
     : version{PKT_VERSION}, sAddress{sAddr}, sPort{sPort}, tAddress{tAddr}, tPort{tPort},
-      type{type} {
+      type{type}, errorCorrectionCode(0) {
   std::fill(data.begin(), data.end(), 0);
 }
 
@@ -76,4 +76,29 @@ Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
   std::fill(packet.data.begin(), packet.data.end(), 0);
   std::memcpy(packet.data.data(), &buffer[offset], packet.data.size());
   return packet;
+}
+
+uint32_t Packet::calculateCRC(const std::vector<uint8_t> &data) {
+  uint32_t crc = 0xFFFFFFFF;
+  for (auto byte : data) {
+    crc ^= byte;
+    for (int i = 0; i < 8; ++i) {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0xEDB88320;
+      else
+        crc >>= 1;
+    }
+  }
+  return ~crc;
+}
+
+void Packet::computeCRC() {
+  auto serializedData = serialize();
+  errorCorrectionCode = calculateCRC(serializedData);
+}
+
+bool Packet::verifyCRC() {
+  auto serializedData = serialize();
+  uint32_t computedCRC = calculateCRC(serializedData);
+  return computedCRC == errorCorrectionCode;
 }
