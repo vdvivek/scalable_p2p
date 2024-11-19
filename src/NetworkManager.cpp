@@ -353,9 +353,12 @@ void NetworkManager::route(int src_idx) {
     visited[minUnvIdx] = true;
 
     for (int j = 0; j < nodes.size(); j++) {
-      if (!visited[j] && minDist[j] + topology[i][j] < minDist[j]) {
-        minDist[j] = minDist[i] + topology[i][j];
-        nextHop[j] = nextHop[i];
+      if (!visited[j] && topology[minUnvIdx][j] != 0 &&
+          minDist[minUnvIdx] + topology[minUnvIdx][j] < minDist[j]) {
+        minDist[j] = minDist[minUnvIdx] + topology[minUnvIdx][j];
+        if (minUnvIdx == src_idx)
+          continue;
+        nextHop[j] = minUnvIdx;
       }
     }
   }

@@ -98,6 +98,8 @@ bool Node::bind() {
 
 void Node::sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort,
                        const std::string &message) {
+  std::cout << "[NEXUS] Node " << name << " sending from " << ip << ":" << port << std::endl;
+  std::cout << "Sending to " << targetName << ":" << targetPort << std::endl;
   struct sockaddr_in targetAddr = {};
   targetAddr.sin_family = AF_INET;
   targetAddr.sin_port = htons(targetPort);
@@ -109,6 +111,11 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   auto packet_data = pkt.serialize();
 
   auto nextHop = networkManager.getNextHop(targetName);
+  // for (auto n : networkManager.nextHop) {
+  //   std::cout << n << " ";
+  // }
+  std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
+            << nextHop->port << std::endl;
 
   struct sockaddr_in nextAddr = {};
   nextAddr.sin_family = AF_INET;
@@ -117,6 +124,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
 
   const int bytesSent = sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
                                reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
+
   if (bytesSent < 0) {
     std::cerr << "Failed to send message: " << strerror(errno) << std::endl;
   } else {
@@ -211,7 +219,7 @@ void Node::receiveMessage(std::string &message) {
   // Null-terminate the buffer to treat it as a string
   buffer[bytesReceived] = '\0';
   std::vector<uint8_t> receivedMessage(buffer, buffer + bufferSize);
-  std::cout << "[NEXUS] Buffer sz " << receivedMessage.size() << "bytes\n ";
+  std::cout << "[NEXUS] Buffer sz " << receivedMessage.size() << "bytes\n";
 
   char senderIP[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &senderAddr.sin_addr, senderIP, sizeof(senderIP));
@@ -230,7 +238,12 @@ void Node::receiveMessage(std::string &message) {
   if ((pkt.tAddress == addr.sin_addr.s_addr) && (pkt.tPort == htons(port))) {
     processMessage(pkt);
   } else {
-    std::cout << "[NEXUS] Received message from " << senderIP << ":" << senderPort << "\n";
+    char nextIP[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(pkt.tAddress), nextIP, sizeof(nextIP));
+    int nextPort = ntohs(pkt.tPort);
+
+    std::cout << "[NEXUS] Forwarding to " << nextIP << ":" << nextPort << "\n";
+    sendTo(nextIP, nextPort, pkt);
 
     // Send to specified node
     // Extract specified final node

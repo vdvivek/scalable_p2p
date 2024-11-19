@@ -30,11 +30,12 @@ public:
   void route(int src_idx);
   std::shared_ptr<Node> getNextHop(const std::string &name);
 
+  std::vector<int> nextHop;
+
 private:
   matrix topology;
   // Holds index for next hop for given destination
   // nextHop[S3 idx] = next node in the shortest path to S3
-  std::vector<int> nextHop;
   std::vector<std::shared_ptr<Node>> nodes;
   std::string registryAddress;
 };

@@ -46,8 +46,10 @@ void GroundNode::sendMessage(const std::string &targetName, const std::string &t
   if (nearestSatellite) {
     std::cout << "[INFO] Relaying message to the nearest satellite: " << nearestSatellite->getName()
               << std::endl;
-    nearestSatellite->sendMessage(targetName, targetIP, targetPort, message);
   } else {
     std::cerr << "[ERROR] No satellite available for relaying the message." << std::endl;
+    return;
   }
+
+  Node::sendMessage(targetName, targetIP, targetPort, message);
 }
