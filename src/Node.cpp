@@ -9,6 +9,10 @@ int Node::getPort() const { return port; }
 std::pair<double, double> Node::getCoords() const { return coords; }
 void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
 
+NodeType::Type Node::getType() const{
+  return type;
+}
+
 // Utility function to generate UUID
 std::string Node::generateUUID() {
   std::random_device rd;
@@ -61,21 +65,15 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
   return actualMessage;
 }
 
-Node::Node(std::string name, const std::string &ip, int port, std::pair<double, double> coords,
+Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords,
            NetworkManager &networkManager)
-    : id(generateUUID()), name(std::move(name)), ip(ip), port(port), coords(std::move(coords)),
+    : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port), coords(std::move(coords)),
       networkManager(networkManager) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
-}
-
-Node::~Node() {
-  if (socket_fd >= 0) {
-    close(socket_fd);
-  }
 }
 
 bool Node::bind() {
@@ -123,7 +121,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   }
 }
 
-///  No routing, pkt might havee different destination
+///  No routing, pkt might have different destination
 void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
   struct sockaddr_in targetAddr = {};
   targetAddr.sin_family = AF_INET;
@@ -234,12 +232,6 @@ void Node::receiveMessage(std::string &message) {
     // Extract specified final node
     // sendMessage(sockaddr_in, pkt);
   }
-}
-
-void Node::updatePosition() {
-  std::cout << "[NEXUS] Node " << name << " is currently stationary." << std::endl;
-  coords.first = roundToTwoDecimalPlaces(coords.first);
-  coords.second = roundToTwoDecimalPlaces(coords.second);
 }
 
 void Node::processMessage(Packet &pkt) {

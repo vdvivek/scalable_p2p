@@ -2,18 +2,29 @@
 #include "SatelliteNode.h"
 #include <cmath>
 #include <iostream>
+#include "Utility.h"
+#include "NodeType.h"
 
-GroundNode::GroundNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
-    : Node(std::move(name), ip, port, std::move(coords), networkManager) {}
+GroundNode::GroundNode(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
+    : Node(nodeType, std::move(name), ip, port, std::move(coords), networkManager) {}
+
+void GroundNode::updatePosition() {
+    coords.first = roundToTwoDecimalPlaces(coords.first);
+    coords.second = roundToTwoDecimalPlaces(coords.second);
+    std::cout << NodeType::toString(this->type) << " " << this->name << "is stationary at " << "(" << this->coords.first << ", " << this->coords.second << ")" << std::endl;
+}
 
 std::shared_ptr<SatelliteNode> GroundNode::findNearestSatellite() const {
     double minDistance = std::numeric_limits<double>::max();
     std::shared_ptr<SatelliteNode> nearestSatellite = nullptr;
 
-    // Iterate through the list of satellite nodes to find the nearest
     for (const auto& node : networkManager.getSatelliteNodes()) {
+        std::cout << "[DEBUG2] Node type: " << static_cast<int>(node->getType()) << std::endl;
         auto satellite = std::dynamic_pointer_cast<SatelliteNode>(node);
+
         if (satellite) {
+            std::cout << "[DEBUG2] satellite node " << satellite->getName() << std::endl;
+
             auto satelliteCoords = satellite->getCoords();
             double distance = std::sqrt(std::pow(satelliteCoords.first - coords.first, 2) +
                                         std::pow(satelliteCoords.second - coords.second, 2));
@@ -23,7 +34,7 @@ std::shared_ptr<SatelliteNode> GroundNode::findNearestSatellite() const {
             }
         }
     }
-
+    std::cout << "[DEBUG2] nearest satellite node " << nearestSatellite->getName() << std::endl;
     return nearestSatellite;
 }
 

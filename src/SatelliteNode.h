@@ -6,7 +6,7 @@
 
 class SatelliteNode: public Node {
 public:
-    SatelliteNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager);
+    SatelliteNode(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager);
 
     void updatePosition() override;
 
@@ -15,6 +15,8 @@ public:
 
 private:
     double delay;
+    double speedX = 0.05;
+    double speedY = 0.1;
 
     void simulateSignalDelay();
 };

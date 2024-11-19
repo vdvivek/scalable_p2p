@@ -76,9 +76,8 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
     };
     std::cout << "[DEBUG1] coords.first " << coords.first << std::endl;
     std::cout << "[DEBUG2] coords.second " << coords.second << std::endl;
-    std::cout << "[DEBUG3] coords.second " << coords.second << std::endl;
 
-    NodeInfo node = {root["name"].asString(), root["ip"].asString(), coords,
+    NodeInfo node = {root["type"].asString(), root["name"].asString(), root["ip"].asString(), coords,
                      root["port"].asInt()};
     registerNode(node);
     response = R"({"message": "Node registered successfully"})";
@@ -98,7 +97,7 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
 void NexusRegistryServer::registerNode(const NodeInfo &node) {
   std::lock_guard<std::mutex> lock(nodesMutex);
   nodes.push_back(node);
-  std::cout << "[INFO] Registered node: " << node.name << " (" << node.ip << ":" << node.port << ")"
+  std::cout << "[INFO] Registered node: " << node.type << " " << node.name << " (" << node.ip << ":" << node.port << ")"
             << " at [" << node.coords.first << ", " << node.coords.second << "]." << std::endl;
 }
 
@@ -116,6 +115,7 @@ std::string NexusRegistryServer::getNodeList() {
   Json::Value root;
   for (const auto &node : nodes) {
     Json::Value n;
+    n["type"] = node.type;
     n["name"] = node.name;
     n["ip"] = node.ip;
     n["port"] = node.port;

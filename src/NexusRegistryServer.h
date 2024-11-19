@@ -9,6 +9,7 @@
 #include <vector>
 
 struct NodeInfo {
+  std::string type;
   std::string name;
   std::string ip;
   std::pair<double, double> coords;

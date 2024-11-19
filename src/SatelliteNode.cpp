@@ -5,13 +5,11 @@
 #include <thread>
 #include <chrono>
 
-SatelliteNode::SatelliteNode(std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
-    : Node(std::move(name), ip, port, std::move(coords), networkManager), delay(0) {}
+SatelliteNode::SatelliteNode(NodeType::Type nodeType, std::string name, const std::string &ip, int port, std::pair<double, double> coords, NetworkManager &networkManager)
+    : Node(nodeType, std::move(name), ip, port, std::move(coords), networkManager), delay(0) {}
 
 
 void SatelliteNode::updatePosition() {
-    double speedX = 0.05; // Example: Horizontal speed
-    double speedY = 0.1;  // Example: Vertical speed
     coords.first = roundToTwoDecimalPlaces(coords.first + speedX);
     coords.second = roundToTwoDecimalPlaces(coords.second + speedY);
 }

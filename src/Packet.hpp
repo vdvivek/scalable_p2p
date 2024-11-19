@@ -24,6 +24,10 @@ struct Packet {
   uint16_t fragmentCount;
   uint32_t errorCorrectionCode;
 
+  // Routing metadata
+  std::vector<uint32_t> route; // List of node IPs to traverse
+  uint16_t currentHop;         // Current hop in the route
+
   std::array<uint8_t, MAX_BUFFER_SIZE> data;
 
   Packet();

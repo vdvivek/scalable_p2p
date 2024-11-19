@@ -5,13 +5,16 @@
 
 #include "Node.h"
 #include "SatelliteNode.h"
+#include "GroundNode.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
 void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
+  std::cout << "[DEBUG4] In addNode" << std::endl;
   // Check if the node already exists in the list, return if it does
   for (const auto &existingNode : nodes) {
+    std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
     if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
         existingNode->getPort() == node->getPort()) {
       return;
@@ -41,7 +44,9 @@ std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
 
   for (const auto &node : nodes) {
-    if (dynamic_cast<SatelliteNode *>(node.get())) {
+    std::cout << "[DEBUG6] Found node in getSatelliteNodes: " << node->getName() << std::endl;
+    if (node->getType() == NodeType::SATELLITE) {
+      std::cout << "[DEBUG3] Found satellite: " << node->getName() << std::endl;
       satellites.push_back(node);
     }
   }
@@ -61,7 +66,7 @@ void NetworkManager::listNodes() const {
   for (const auto &node : nodes) {
     if (node) {
       auto coords = node->getCoords();
-      std::cout << node->getName() << " (" << node->getId() << ") at " << node->getIP() << ":"
+      std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " (" << node->getId() << ") at " << node->getIP() << ":"
                 << node->getPort() << " [" << coords.first << ", " << coords.second << "]"
                 << std::endl;
     } else {
@@ -80,6 +85,7 @@ bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node> &node)
   std::string url = registryAddress + "/register";
   Json::Value payload;
   payload["action"] = "register";
+  payload["type"] = NodeType::toString(node->getType());
   payload["name"] = node->getName();
   payload["ip"] = node->getIP();
   payload["port"] = node->getPort();
@@ -116,6 +122,7 @@ void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node> &nod
   std::string url = registryAddress + "/deregister";
   Json::Value payload;
   payload["action"] = "deregister";
+  payload["type"] = NodeType::toString(node->getType());
   payload["name"] = node->getName();
   payload["ip"] = node->getIP();
   payload["port"] = node->getPort();
@@ -151,6 +158,8 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::stri
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
+  std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
+
   CURL *curl = curl_easy_init();
   if (!curl) {
     std::cerr << "[ERROR] Failed to initialize CURL for fetching nodes." << std::endl;
@@ -236,11 +245,22 @@ void NetworkManager::fetchNodesFromRegistry() {
 
       double x = nodeJson.isMember("x") ? nodeJson["x"].asDouble() : 0.0;
       double y = nodeJson.isMember("y") ? nodeJson["y"].asDouble() : 0.0;
+      NodeType::Type nodeTypeEnum = NodeType::fromString(nodeJson["type"].asString());
 
-      auto node = std::make_shared<Node>(nodeJson["name"].asString(), nodeJson["ip"].asString(),
-                                         nodeJson["port"].asInt(),
-                                         std::make_pair(x, y), // Pass coordinates as pair
-                                         *this);
+      std::shared_ptr<Node> node;
+      if (nodeTypeEnum == NodeType::GROUND) {
+        node = std::make_shared<GroundNode>(nodeTypeEnum, nodeJson["name"].asString(),
+                                            nodeJson["ip"].asString(), nodeJson["port"].asInt(),
+                                            std::make_pair(x, y), *this);
+      } else if (nodeTypeEnum == NodeType::SATELLITE) {
+        node = std::make_shared<SatelliteNode>(nodeTypeEnum, nodeJson["name"].asString(),
+                                               nodeJson["ip"].asString(), nodeJson["port"].asInt(),
+                                               std::make_pair(x, y), *this);
+      } else {
+        std::cerr << "[ERROR] Unknown NodeType: " << nodeTypeEnum << std::endl;
+        return; // Or handle the error as appropriate
+      }
+
       addNode(node);
     }
   }
