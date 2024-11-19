@@ -1,8 +1,4 @@
 #include "NexusRegistryServer.h"
-#include "Utility.h"
-#include <iostream>
-#include <json/json.h>
-#include <unistd.h>
 
 NexusRegistryServer::NexusRegistryServer(int port) : port(port), isRunning(false) {}
 
@@ -70,15 +66,13 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
   std::string action = root["action"].asString();
 
   if (action == "register") {
-    std::pair<double, double> coords = {
-      roundToTwoDecimalPlaces(std::stod(root["x"].asString())),
-      roundToTwoDecimalPlaces(std::stod(root["y"].asString()))
-    };
+    std::pair<double, double> coords = {roundToTwoDecimalPlaces(std::stod(root["x"].asString())),
+                                        roundToTwoDecimalPlaces(std::stod(root["y"].asString()))};
     std::cout << "[DEBUG1] coords.first " << coords.first << std::endl;
     std::cout << "[DEBUG2] coords.second " << coords.second << std::endl;
 
-    NodeInfo node = {root["type"].asString(), root["name"].asString(), root["ip"].asString(), coords,
-                     root["port"].asInt()};
+    NodeInfo node = {root["type"].asString(), root["name"].asString(), root["ip"].asString(),
+                     coords, root["port"].asInt()};
     registerNode(node);
     response = R"({"message": "Node registered successfully"})";
   } else if (action == "deregister") {
@@ -97,7 +91,8 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
 void NexusRegistryServer::registerNode(const NodeInfo &node) {
   std::lock_guard<std::mutex> lock(nodesMutex);
   nodes.push_back(node);
-  std::cout << "[INFO] Registered node: " << node.type << " " << node.name << " (" << node.ip << ":" << node.port << ")"
+  std::cout << "[INFO] Registered node: " << node.type << " " << node.name << " (" << node.ip << ":"
+            << node.port << ")"
             << " at [" << node.coords.first << ", " << node.coords.second << "]." << std::endl;
 }
 

@@ -3,18 +3,18 @@
 #include <iostream>
 #include <json/json.h>
 
+#include "GroundNode.h"
 #include "Node.h"
 #include "SatelliteNode.h"
-#include "GroundNode.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
 void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
-  std::cout << "[DEBUG4] In addNode" << std::endl;
+  // std::cout << "[DEBUG4] In addNode" << std::endl;
   // Check if the node already exists in the list, return if it does
   for (const auto &existingNode : nodes) {
-    std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
+    // std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
     if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
         existingNode->getPort() == node->getPort()) {
       return;
@@ -66,9 +66,9 @@ void NetworkManager::listNodes() const {
   for (const auto &node : nodes) {
     if (node) {
       auto coords = node->getCoords();
-      std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " (" << node->getId() << ") at " << node->getIP() << ":"
-                << node->getPort() << " [" << coords.first << ", " << coords.second << "]"
-                << std::endl;
+      std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " ("
+                << node->getId() << ") at " << node->getIP() << ":" << node->getPort() << " ["
+                << coords.first << ", " << coords.second << "]" << std::endl;
     } else {
       std::cerr << "[WARNING] Encountered a null node entry in the network." << std::endl;
     }
