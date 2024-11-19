@@ -43,7 +43,8 @@ public:
 
   virtual void sendTo(const std::string &targetIP, int targetPort, Packet &pkt);
 
-  virtual void sendFile(const std::string &targetIP, int targetPort, const std::string &fileName);
+  virtual void sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
+                        const std::string &fileName);
 
   virtual std::string extractMessage(const std::string &payload, std::string &senderName,
                                      std::string &targetIP, int &targetPort);

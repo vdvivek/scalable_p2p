@@ -114,8 +114,8 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   // for (auto n : networkManager.nextHop) {
   //   std::cout << n << " ";
   // }
-  std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
-            << nextHop->port << std::endl;
+  // std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
+  //           << nextHop->port << std::endl;
 
   struct sockaddr_in nextAddr = {};
   nextAddr.sin_family = AF_INET;
@@ -155,7 +155,8 @@ void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
   }
 }
 
-void Node::sendFile(const std::string &targetIP, int targetPort, const std::string &fileName) {
+void Node::sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
+                    const std::string &fileName) {
   struct sockaddr_in targetAddr = {};
   targetAddr.sin_family = AF_INET;
   targetAddr.sin_port = htons(targetPort);
@@ -183,7 +184,10 @@ void Node::sendFile(const std::string &targetIP, int targetPort, const std::stri
 
     pkt.fragmentNumber = fragNumber++;
     pkt.data = buffer;
-    sendTo(targetIP, targetPort, pkt);
+
+    auto nextHop = networkManager.getNextHop(targetName);
+
+    sendTo(nextHop->getIP(), nextHop->getPort(), pkt);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }

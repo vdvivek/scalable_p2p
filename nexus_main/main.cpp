@@ -96,7 +96,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
         continue;
       }
 
-      node->sendFile(targetIP, targetPort, message);
+      node->sendFile(targetName, targetIP, targetPort, message);
     } else if (command == "list") {
       networkManager.listNodes(); // Call listNodes to print node details
     }
