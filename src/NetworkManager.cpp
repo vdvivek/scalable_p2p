@@ -11,10 +11,8 @@ NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
 void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
-  // std::cout << "[DEBUG4] In addNode" << std::endl;
   // Check if the node already exists in the list, return if it does
   for (const auto &existingNode : nodes) {
-    // std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
     if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
         existingNode->getPort() == node->getPort()) {
 
@@ -47,9 +45,7 @@ std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
 
   for (const auto &node : nodes) {
-    std::cout << "[DEBUG6] Found node in getSatelliteNodes: " << node->getName() << std::endl;
     if (node->getType() == NodeType::SATELLITE) {
-      std::cout << "[DEBUG3] Found satellite: " << node->getName() << std::endl;
       satellites.push_back(node);
     }
   }
@@ -161,8 +157,6 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::stri
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
-  // std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
-
   CURL *curl = curl_easy_init();
   if (!curl) {
     std::cerr << "[ERROR] Failed to initialize CURL for fetching nodes." << std::endl;

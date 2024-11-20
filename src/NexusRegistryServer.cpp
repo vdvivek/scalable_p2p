@@ -68,8 +68,6 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
   if (action == "register") {
     std::pair<double, double> coords = {roundToTwoDecimalPlaces(std::stod(root["x"].asString())),
                                         roundToTwoDecimalPlaces(std::stod(root["y"].asString()))};
-    std::cout << "[DEBUG1] coords.first " << coords.first << std::endl;
-    std::cout << "[DEBUG2] coords.second " << coords.second << std::endl;
 
     NodeInfo node = {root["type"].asString(), root["name"].asString(), root["ip"].asString(),
                      coords, root["port"].asInt()};
@@ -80,7 +78,6 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
     response = R"({"message": "Node deregistered successfully"})";
   } else if (action == "list") {
     response = getNodeList();
-    std::cout << "[DEBUG] Sending node list response: " << response << std::endl;
   } else {
     response = R"({"error": "Unknown action"})";
   }
@@ -105,7 +102,6 @@ void NexusRegistryServer::deregisterNode(const std::string &name) {
 }
 
 std::string NexusRegistryServer::getNodeList() {
-  std::cout << "[DEBUG3] in getNodeList()" << std::endl;
   std::lock_guard<std::mutex> lock(nodesMutex);
   Json::Value root;
   for (const auto &node : nodes) {

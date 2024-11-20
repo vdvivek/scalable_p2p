@@ -21,12 +21,9 @@ std::shared_ptr<SatelliteNode> GroundNode::findNearestSatellite() const {
   std::shared_ptr<SatelliteNode> nearestSatellite = nullptr;
 
   for (const auto &node : networkManager.getSatelliteNodes()) {
-    std::cout << "[DEBUG2] Node type: " << static_cast<int>(node->getType()) << std::endl;
     auto satellite = std::dynamic_pointer_cast<SatelliteNode>(node);
 
     if (satellite) {
-      std::cout << "[DEBUG2] satellite node " << satellite->getName() << std::endl;
-
       auto satelliteCoords = satellite->getCoords();
       double distance = std::sqrt(std::pow(satelliteCoords.first - coords.first, 2) +
                                   std::pow(satelliteCoords.second - coords.second, 2));
@@ -36,7 +33,7 @@ std::shared_ptr<SatelliteNode> GroundNode::findNearestSatellite() const {
       }
     }
   }
-  std::cout << "[DEBUG2] nearest satellite node " << nearestSatellite->getName() << std::endl;
+  std::cout << "[DEBUG] Found nearest satellite node " << nearestSatellite->getName() << std::endl;
   return nearestSatellite;
 }
 
