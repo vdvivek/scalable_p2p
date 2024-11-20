@@ -24,10 +24,8 @@ void SatelliteNode::simulateSignalDelay() {
 
 void SatelliteNode::receiveMessage(std::string &message) {
   Node::receiveMessage(message);
-  return;
 
-  // Message is empty always
-  // Code is added to base class
+  /* Message is empty always - code is added to base class.
 
   if (message.empty()) {
     // No message received yet on satellite, so skip
@@ -53,4 +51,5 @@ void SatelliteNode::receiveMessage(std::string &message) {
   } else {
     std::cerr << "[ERROR] Failed to parse message for forwarding." << std::endl;
   }
+  */
 }
