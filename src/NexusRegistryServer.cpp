@@ -8,7 +8,7 @@ NexusRegistryServer::~NexusRegistryServer() { stop(); }
 void NexusRegistryServer::start() {
   serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (serverSocket < 0) {
-    std::cerr << "[ERROR] Failed to create socket." << std::endl;
+    Logger::getInstance().log(LogLevel::ERROR, "Failed to create socket.");
     return;
   }
 
@@ -19,19 +19,19 @@ void NexusRegistryServer::start() {
 
   if (bind(serverSocket, reinterpret_cast<struct sockaddr *>(&serverAddr), sizeof(serverAddr)) <
       0) {
-    std::cerr << "[ERROR] Failed to bind socket." << std::endl;
+    Logger::getInstance().log(LogLevel::ERROR, "Failed to bind socket.");
     close(serverSocket);
     return;
   }
 
   if (listen(serverSocket, 10) < 0) {
-    std::cerr << "[ERROR] Failed to listen on socket." << std::endl;
+    Logger::getInstance().log(LogLevel::ERROR, "Failed to listen on socket.");
     close(serverSocket);
     return;
   }
 
   isRunning = true;
-  std::cout << "[INFO] NexusRegistryServer is running on port " << port << std::endl;
+  Logger::getInstance().log(LogLevel::INFO, "NexusRegistryServer is running on port " + std::to_string(port) + ".");
 
   while (isRunning) {
     sockaddr_in clientAddr{};
@@ -40,7 +40,7 @@ void NexusRegistryServer::start() {
         accept(serverSocket, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientLen);
 
     if (clientSocket < 0) {
-      std::cerr << "[ERROR] Failed to accept connection." << std::endl;
+      Logger::getInstance().log(LogLevel::ERROR, "Failed to accept connection.");
       continue;
     }
 
@@ -51,12 +51,10 @@ void NexusRegistryServer::start() {
 void NexusRegistryServer::stop() {
   isRunning = false;
   close(serverSocket);
-  std::cout << "[INFO] NexusRegistryServer stopped." << std::endl;
+  Logger::getInstance().log(LogLevel::INFO, "NexusRegistryServer stopped.");
 }
 
 void NexusRegistryServer::processRequest(const std::string &request, std::string &response) {
-  std::cout << "[DEBUG] Received request: " << request << std::endl;
-
   Json::Reader reader;
   Json::Value root;
   if (!reader.parse(request, root)) {
@@ -80,28 +78,26 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
   } else if (action == "list") {
     response = getNodeList();
   } else if (action == "update") {
-      NodeInfo node = {
+    NodeInfo node = {
         root["type"].asString(),
         root["name"].asString(),
         root["ip"].asString(),
         {root["x"].asDouble(), root["y"].asDouble()},
-        root["port"].asInt()
-    };
+        root["port"].asInt()};
     updateNode(node);
     response = R"({"message":"Node updated successfully"})";
   } else {
     response = R"({"error": "Unknown action"})";
   }
-
-  std::cout << std::endl;
 }
 
 void NexusRegistryServer::registerNode(const NodeInfo &node) {
   std::lock_guard<std::mutex> lock(nodesMutex);
   nodes.push_back(node);
-  std::cout << "[INFO] Registered node: " << node.type << " " << node.name << " (" << node.ip << ":"
-            << node.port << ")"
-            << " at [" << node.coords.first << ", " << node.coords.second << "]." << std::endl;
+  Logger::getInstance().log(LogLevel::INFO, "Registered node: " + node.type + " " + node.name +
+                             " (" + node.ip + ":" + std::to_string(node.port) + ")" +
+                             " at [" + std::to_string(node.coords.first) + ", " +
+                             std::to_string(node.coords.second) + "].");
 }
 
 void NexusRegistryServer::deregisterNode(const std::string &name) {
@@ -109,7 +105,7 @@ void NexusRegistryServer::deregisterNode(const std::string &name) {
   nodes.erase(std::remove_if(nodes.begin(), nodes.end(),
                              [&name](const NodeInfo &node) { return node.name == name; }),
               nodes.end());
-  std::cout << "[INFO] Deregistered node: " << name << std::endl;
+  Logger::getInstance().log(LogLevel::INFO, "Deregistered node: " + name);
 }
 
 void NexusRegistryServer::updateNode(const NodeInfo &node) {
@@ -123,14 +119,16 @@ void NexusRegistryServer::updateNode(const NodeInfo &node) {
       existingNode.coords = node.coords;
       existingNode.port = node.port;
       nodeUpdated = true;
-      std::cout << "[INFO] Updated node: " << node.name << " (" << node.ip << ":" << node.port
-                << ") at [" << node.coords.first << ", " << node.coords.second << "]." << std::endl;
+      Logger::getInstance().log(LogLevel::INFO, "Updated node: " + node.name + " (" + node.ip +
+                                 ":" + std::to_string(node.port) + ") at [" +
+                                 std::to_string(node.coords.first) + ", " +
+                                 std::to_string(node.coords.second) + "].");
       break;
     }
   }
 
   if (!nodeUpdated) {
-    std::cerr << "[WARNING] Node not found for update: " << node.name << std::endl;
+    Logger::getInstance().log(LogLevel::WARNING, "Node not found for update: " + node.name + ".");
   }
 }
 
@@ -148,10 +146,8 @@ std::string NexusRegistryServer::getNodeList() {
       n["y"] = node.coords.second;
       root.append(n);
     }
-    std::cout << "[DEBUG] Node list: " << root.toStyledString() << std::endl;
-  }
-  catch (const std::exception &e) {
-    std::cerr << "[ERROR] Exception while building node list: " << e.what() << std::endl;
+  } catch (const std::exception &e) {
+    Logger::getInstance().log(LogLevel::ERROR, "Exception while building node list: " + std::string(e.what()));
     return "{}"; // Return empty JSON object in case of error
   }
   Json::StreamWriterBuilder writer;
@@ -177,8 +173,6 @@ std::string NexusRegistryServer::readFromSocket(int socket) {
 }
 
 void NexusRegistryServer::writeToSocket(int socket, const std::string &response) {
-  std::cout << "[DEBUG] In writeToSocket " << response << std::endl;
-
   std::string httpResponse = "HTTP/1.1 200 OK\r\n"
                              "Content-Type: application/json\r\n"
                              "Content-Length: " +

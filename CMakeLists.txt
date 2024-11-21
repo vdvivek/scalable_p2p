@@ -21,6 +21,7 @@ set(NEXUS_SRC
         src/Packet.cpp
         src/Utility.cpp
         src/NodeType.h
+        src/Logger.h
 )
 
 set(REGISTRY_SRC
