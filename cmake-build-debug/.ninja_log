@@ -1,0 +1,18 @@
+# ninja log v6
+8	547	1732201277362397331	CMakeFiles/nexus.dir/src/Utility.cpp.o	5278f51c483a486f
+0	8	1732201787207935707	clean	ad90e366ad70d77b
+573	664	1731785913445298605	scalable_p2p	133b0ebfb471ec8e
+7	489	1732201691225478994	CMakeFiles/nexus.dir/src/Node.cpp.o	174d60b804617b36
+2	128	1732201792030345930	build.ninja	3ec4f76fcc28d8f6
+6	511	1732201691225173783	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	fc2e7bbc89670a00
+7	526	1732201691225593787	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	baead4c26cfa8f82
+7	291	1732201691225782663	CMakeFiles/nexus.dir/src/Packet.cpp.o	6bbf108eff2ef578
+526	628	1732201691744836800	nexus	9a416dff480964ca
+7	618	1732201277361551531	CMakeFiles/nexus.dir/src/Logger.cpp.o	58bb97ae0344264d
+6	349	1732201794743362411	CMakeFiles/nexus.dir/src/Logger.cpp.o	58bb97ae0344264d
+6	374	1732201794743457120	CMakeFiles/nexus.dir/src/Packet.cpp.o	6bbf108eff2ef578
+8	377	1732201794745293513	CMakeFiles/nexus.dir/src/Utility.cpp.o	5278f51c483a486f
+5	522	1732201794743139076	CMakeFiles/nexus.dir/src/Node.cpp.o	174d60b804617b36
+5	550	1732201794742801156	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	fc2e7bbc89670a00
+6	568	1732201794743254910	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	baead4c26cfa8f82
+569	599	1732201795306217676	nexus	9a416dff480964ca
