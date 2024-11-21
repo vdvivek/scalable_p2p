@@ -23,6 +23,7 @@ public:
   bool registerNodeWithRegistry(const std::shared_ptr<Node> &node);
   void deregisterNodeWithRegistry(const std::shared_ptr<Node> &node);
   void fetchNodesFromRegistry();
+  void updateNodeInRegistry(const std::shared_ptr<Node> &node);
 
   void createRoutingTable();
   void updateRoutingTable(const std::shared_ptr<Node> &node);

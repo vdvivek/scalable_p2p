@@ -1,68 +1,6 @@
 #include "Node.h"
 #include "Utility.h"
 
-std::string Node::getId() const { return id; }
-std::string Node::getName() const { return name; }
-std::string Node::getIP() const { return ip; }
-int Node::getPort() const { return port; }
-
-std::pair<double, double> Node::getCoords() const { return coords; }
-void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
-
-NodeType::Type Node::getType() const { return type; }
-
-// Utility function to generate UUID
-std::string Node::generateUUID() {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dis(0, 15);
-  std::uniform_int_distribution<> dis2(8, 11);
-
-  std::stringstream ss;
-  ss << std::hex << std::setfill('0');
-  for (int i = 0; i < 8; i++)
-    ss << dis(gen);
-  ss << "-";
-  for (int i = 0; i < 4; i++)
-    ss << dis(gen);
-  ss << "-4"; // UUID version 4
-  for (int i = 0; i < 3; i++)
-    ss << dis(gen);
-  ss << "-";
-  ss << dis2(gen);
-  for (int i = 0; i < 3; i++)
-    ss << dis(gen);
-  ss << "-";
-  for (int i = 0; i < 12; i++)
-    ss << dis(gen);
-  return ss.str();
-}
-
-std::string Node::extractMessage(const std::string &payload, std::string &senderName,
-                                 std::string &targetIP, int &targetPort) {
-  std::istringstream iss(payload);
-  std::string portStr;
-  std::string actualMessage;
-
-  // Parse the payload (format: senderName targetIP targetPort message)
-  if (iss >> senderName >> targetIP >> portStr) {
-    try {
-      targetPort = std::stoi(portStr); // Convert port to integer
-    } catch (const std::exception &e) {
-      std::cerr << "[ERROR] Invalid port in message payload: " << portStr << "\n";
-      return "";
-    }
-
-    // Extract the remaining part of the payload as the actual message
-    std::getline(iss, actualMessage);
-    actualMessage.erase(0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
-  } else {
-    std::cerr << "[ERROR] Malformed message payload: " << payload << "\n";
-  }
-
-  return actualMessage;
-}
-
 Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
            std::pair<double, double> coords, NetworkManager &networkManager)
     : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port),
@@ -73,6 +11,16 @@ Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int
   addr.sin_port = htons(port);
   inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
 }
+
+std::string Node::getId() const { return id; }
+std::string Node::getName() const { return name; }
+std::string Node::getIP() const { return ip; }
+int Node::getPort() const { return port; }
+
+std::pair<double, double> Node::getCoords() const { return coords; }
+void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
+
+NodeType::Type Node::getType() const { return type; }
 
 bool Node::bind() {
   // Create a UDP socket
@@ -96,105 +44,23 @@ bool Node::bind() {
   return true;
 }
 
-void Node::sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort,
-                       const std::string &message) {
-  std::cout << "[NEXUS] Node " << name << " sending from " << ip << ":" << port << std::endl;
-  std::cout << "Sending to " << targetName << ":" << targetPort << std::endl;
-  struct sockaddr_in targetAddr = {};
-  targetAddr.sin_family = AF_INET;
-  targetAddr.sin_port = htons(targetPort);
-  inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
+void Node::updatePosition() {
+  if (type == NodeType::Type::SATELLITE) {
+    // Satellite nodes move based on below logic
+    coords.first = roundToTwoDecimalPlaces(coords.first + 0.05);
+    coords.second = roundToTwoDecimalPlaces(coords.second + 0.075);
+    std::cout << "[UPDATE] Satellite " << name << " new position: (" << coords.first << ", "
+              << coords.second << ")" << std::endl;
 
-  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
-             packetType::TEXT);
-
-  auto packet_data = pkt.serialize();
-
-  auto nextHop = networkManager.getNextHop(targetName);
-  // for (auto n : networkManager.nextHop) {
-  //   std::cout << n << " ";
-  // }
-  // std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
-  //           << nextHop->port << std::endl;
-
-  struct sockaddr_in nextAddr = {};
-  nextAddr.sin_family = AF_INET;
-  nextAddr.sin_port = htons(nextHop->getPort());
-  inet_pton(AF_INET, nextHop->getIP().c_str(), &nextAddr.sin_addr);
-
-  const int bytesSent = sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
-                               reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
-
-  if (bytesSent < 0) {
-    std::cerr << "Failed to send message: " << strerror(errno) << std::endl;
-  } else {
-    std::cout << "[NEXUS] Sent message to " << targetName << " at " << targetIP << ":" << targetPort
-              << std::endl;
+    // Update the registry with new coordinates
+    networkManager.updateNodeInRegistry(shared_from_this());
+  } else if (type == NodeType::Type::GROUND) {
+    // Ground nodes are stationary
+    std::cout << "[INFO] Ground node " << name << " remains stationary at (" << coords.first
+              << ", " << coords.second << ")" << std::endl;
   }
 }
 
-///  No routing, pkt might have different destination
-void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
-  struct sockaddr_in targetAddr = {};
-  targetAddr.sin_family = AF_INET;
-  targetAddr.sin_port = htons(targetPort);
-  inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
-
-  auto pkt_data = pkt.serialize();
-  auto p2 = pkt.deserialize(pkt_data);
-
-  const int bytesSent =
-      sendto(socket_fd, pkt_data.data(), pkt_data.size(), 0,
-             reinterpret_cast<struct sockaddr *>(&targetAddr), sizeof(targetAddr));
-
-  if (bytesSent < 0) {
-    std::cerr << "Failed to send data: " << strerror(errno) << std::endl;
-  } else {
-    std::cout << "[NEXUS] Sent " << bytesSent << "to (sendTo)" << targetIP << ":" << targetPort
-              << std::endl;
-  }
-}
-
-void Node::sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
-                    const std::string &fileName) {
-  struct sockaddr_in targetAddr = {};
-  targetAddr.sin_family = AF_INET;
-  targetAddr.sin_port = htons(targetPort);
-  inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
-
-  std::vector<Packet> fragments;
-
-  std::ifstream fileHandle(fileName, std::ios::binary | std::ios::ate);
-  size_t file_size = fileHandle.tellg();
-  int fragCount = std::ceil(static_cast<double>(file_size) / MAX_BUFFER_SIZE);
-  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
-             packetType::FILE);
-  pkt.fragmentCount = fragCount;
-  std::cout << "[NEXUS]: Fragment Count: " << pkt.fragmentCount << std::endl;
-
-  fileHandle.seekg(0, std::ios::beg);
-  int fragNumber = 1;
-  std::array<uint8_t, MAX_BUFFER_SIZE> buffer;
-
-  for (int i = 0; i < fragCount; i++) {
-    fileHandle.read(reinterpret_cast<char *>(buffer.data()), MAX_BUFFER_SIZE);
-    auto byteCount = fileHandle.gcount();
-    std::cout << "[NEXUS]: Read : " << byteCount << " bytes" << std::endl;
-    std::cout << "[NEXUS]: Sending fragment: " << fragNumber << std::endl;
-
-    pkt.fragmentNumber = fragNumber++;
-    pkt.data = buffer;
-
-    auto nextHop = networkManager.getNextHop(targetName);
-
-    sendTo(nextHop->getIP(), nextHop->getPort(), pkt);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-
-  fileHandle.close();
-  std::cout << "File sent." << std::endl;
-}
 
 void Node::receiveMessage(std::string &message) {
   if (socket_fd < 0) {
@@ -253,6 +119,185 @@ void Node::receiveMessage(std::string &message) {
     // Extract specified final node
     // sendMessage(sockaddr_in, pkt);
   }
+}
+
+void Node::sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort,
+                       const std::string &message) {
+  std::cout << "[NEXUS] Node " << name << " sending from " << ip << ":" << port << std::endl;
+  std::cout << "Sending to " << targetName << ":" << targetPort << std::endl;
+
+  if (socket_fd < 0) {
+    std::cerr << "[ERROR] Invalid socket descriptor. Did you forget to bind the socket?" << std::endl;
+    return;
+  }
+
+  struct sockaddr_in targetAddr = {};
+  targetAddr.sin_family = AF_INET;
+  targetAddr.sin_port = htons(targetPort);
+  if (inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr) <= 0) {
+    std::cerr << "[ERROR] Invalid target IP address: " << targetIP << std::endl;
+    return;
+  }
+
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
+             packetType::TEXT);
+
+  auto packet_data = pkt.serialize();
+  std::cout << "[DEBUG1] Packet size: " << packet_data.size() << " bytes" << std::endl;
+  if (packet_data.empty()) {
+    std::cerr << "[ERROR] Failed to serialize packet. No data to send." << std::endl;
+    return;
+  }
+
+  auto nextHop = networkManager.getNextHop(targetName);
+  if (!nextHop) {
+    std::cerr << "[ERROR] No next hop found for target: " << targetName << std::endl;
+  }
+  // for (auto n : networkManager.nextHop) {
+  //   std::cout << n << " ";
+  // }
+  // std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
+  //           << nextHop->port << std::endl;
+
+  struct sockaddr_in nextAddr = {};
+  nextAddr.sin_family = AF_INET;
+  nextAddr.sin_port = htons(nextHop->getPort());
+  if (inet_pton(AF_INET, nextHop->getIP().c_str(), &nextAddr.sin_addr) <= 0) {
+    std::cerr << "[ERROR] Invalid next hop IP address: " << nextHop->getIP() << std::endl;
+    return;
+  }
+
+  const int bytesSent = sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
+                               reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
+
+  if (bytesSent < 0) {
+    std::cerr << "Failed to send message: " << strerror(errno) << std::endl;
+  } else {
+    std::cout << "[NEXUS] Sent message to " << targetName << " at " << targetIP << ":" << targetPort
+              << std::endl;
+  }
+}
+
+void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
+  struct sockaddr_in targetAddr = {};
+  targetAddr.sin_family = AF_INET;
+  targetAddr.sin_port = htons(targetPort);
+  inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
+
+  auto pkt_data = pkt.serialize();
+  auto p2 = pkt.deserialize(pkt_data);
+
+  const int bytesSent =
+      sendto(socket_fd, pkt_data.data(), pkt_data.size(), 0,
+             reinterpret_cast<struct sockaddr *>(&targetAddr), sizeof(targetAddr));
+
+  if (bytesSent < 0) {
+    std::cerr << "Failed to send data: " << strerror(errno) << std::endl;
+  } else {
+    std::cout << "[NEXUS] Sent " << bytesSent << "to (sendTo)" << targetIP << ":" << targetPort
+              << std::endl;
+  }
+}
+
+
+void Node::sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
+                    const std::string &fileName) {
+  struct sockaddr_in targetAddr = {};
+  targetAddr.sin_family = AF_INET;
+  targetAddr.sin_port = htons(targetPort);
+  inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
+
+  std::vector<Packet> fragments;
+
+  std::ifstream fileHandle(fileName, std::ios::binary | std::ios::ate);
+  size_t file_size = fileHandle.tellg();
+  int fragCount = std::ceil(static_cast<double>(file_size) / MAX_BUFFER_SIZE);
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
+             packetType::FILE);
+  pkt.fragmentCount = fragCount;
+  std::cout << "[NEXUS]: Fragment Count: " << pkt.fragmentCount << std::endl;
+
+  fileHandle.seekg(0, std::ios::beg);
+  int fragNumber = 1;
+  std::array<uint8_t, MAX_BUFFER_SIZE> buffer;
+
+  for (int i = 0; i < fragCount; i++) {
+    fileHandle.read(reinterpret_cast<char *>(buffer.data()), MAX_BUFFER_SIZE);
+    auto byteCount = fileHandle.gcount();
+    std::cout << "[NEXUS]: Read : " << byteCount << " bytes" << std::endl;
+    std::cout << "[NEXUS]: Sending fragment: " << fragNumber << std::endl;
+
+    pkt.fragmentNumber = fragNumber++;
+    pkt.data = buffer;
+
+    auto nextHop = networkManager.getNextHop(targetName);
+
+    sendTo(nextHop->getIP(), nextHop->getPort(), pkt);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  fileHandle.close();
+  std::cout << "File sent." << std::endl;
+}
+
+std::string Node::extractMessage(const std::string &payload, std::string &senderName,
+                                 std::string &targetIP, int &targetPort) {
+  std::istringstream iss(payload);
+  std::string portStr;
+  std::string actualMessage;
+
+  // Parse the payload (format: senderName targetIP targetPort message)
+  if (iss >> senderName >> targetIP >> portStr) {
+    try {
+      targetPort = std::stoi(portStr); // Convert port to integer
+    } catch (const std::exception &e) {
+      std::cerr << "[ERROR] Invalid port in message payload: " << portStr << "\n";
+      return "";
+    }
+
+    // Extract the remaining part of the payload as the actual message
+    std::getline(iss, actualMessage);
+    actualMessage.erase(0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
+  } else {
+    std::cerr << "[ERROR] Malformed message payload: " << payload << "\n";
+  }
+
+  return actualMessage;
+}
+
+std::string Node::generateUUID() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, 15);
+  std::uniform_int_distribution<> dis2(8, 11);
+
+  std::stringstream ss;
+  ss << std::hex << std::setfill('0');
+  for (int i = 0; i < 8; i++)
+    ss << dis(gen);
+  ss << "-";
+  for (int i = 0; i < 4; i++)
+    ss << dis(gen);
+  ss << "-4"; // UUID version 4
+  for (int i = 0; i < 3; i++)
+    ss << dis(gen);
+  ss << "-";
+  ss << dis2(gen);
+  for (int i = 0; i < 3; i++)
+    ss << dis(gen);
+  ss << "-";
+  for (int i = 0; i < 12; i++)
+    ss << dis(gen);
+  return ss.str();
+}
+
+void Node::simulateSignalDelay() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0.1, 2.0); // Random delay between 0.1s and 2.0s
+  delay = dis(gen);
+  std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(delay * 1000)));
 }
 
 void Node::processMessage(Packet &pkt) {
@@ -317,4 +362,11 @@ void Node::reassembleFile(Packet &pkt) {
     remove(filename.c_str());
   }
   output.close();
+}
+
+Node::~Node() {
+  if (socket_fd >= 0) {
+    close(socket_fd);
+    socket_fd = -1;
+  }
 }

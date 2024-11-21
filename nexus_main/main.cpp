@@ -3,13 +3,11 @@
 #include <iostream>
 #include <thread>
 
-#include <string.h>
+#include <cstring>
 
-#include "../src/GroundNode.h"
 #include "../src/NetworkManager.h"
-#include "../src/Node.h" // Any issue here?
+#include "../src/Node.h"
 #include "../src/NodeType.h"
-#include "../src/SatelliteNode.h"
 
 const int UPDATE_INTERVAL = 30;
 
@@ -160,12 +158,12 @@ int main(int argc, char **argv) {
   std::thread positionUpdateThread;
 
   if (nodeTypeEnum == NodeType::GROUND) {
-    node = std::make_shared<GroundNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
+    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     std::cout << "[INFO] Creating a GroundNode..." << std::endl;
     node->updatePosition();
   } else {
     auto satelliteNode =
-        std::make_shared<SatelliteNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
+        std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node = satelliteNode;
 
     // Create a thread to update position periodically

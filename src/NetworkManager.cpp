@@ -3,9 +3,7 @@
 #include <iostream>
 #include <json/json.h>
 
-#include "GroundNode.h"
 #include "Node.h"
-#include "SatelliteNode.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
@@ -246,11 +244,11 @@ void NetworkManager::fetchNodesFromRegistry() {
 
       std::shared_ptr<Node> node;
       if (nodeTypeEnum == NodeType::GROUND) {
-        node = std::make_shared<GroundNode>(nodeTypeEnum, nodeJson["name"].asString(),
+        node = std::make_shared<Node>(nodeTypeEnum, nodeJson["name"].asString(),
                                             nodeJson["ip"].asString(), nodeJson["port"].asInt(),
                                             std::make_pair(x, y), *this);
       } else if (nodeTypeEnum == NodeType::SATELLITE) {
-        node = std::make_shared<SatelliteNode>(nodeTypeEnum, nodeJson["name"].asString(),
+        node = std::make_shared<Node>(nodeTypeEnum, nodeJson["name"].asString(),
                                                nodeJson["ip"].asString(), nodeJson["port"].asInt(),
                                                std::make_pair(x, y), *this);
       } else {
@@ -261,6 +259,9 @@ void NetworkManager::fetchNodesFromRegistry() {
       addNode(node);
     }
   }
+}
+void NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node> &node) {
+    std::cout << "updateNodeInRegistry implementation"  << std::endl;
 }
 
 void NetworkManager::createRoutingTable() {
