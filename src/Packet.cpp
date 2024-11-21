@@ -107,7 +107,8 @@ Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
 
   // Verify CRC after deserialization
   if (!packet.verifyCRC()) {
-    throw std::runtime_error("CRC verification failed");
+    throw std::runtime_error("CRC verification failed! Integrity of the "
+                             "message might be compromised.");
   }
 
   return packet;
