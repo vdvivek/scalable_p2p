@@ -1,10 +1,13 @@
 #include "Packet.hpp"
 
-Packet::Packet() : version{PKT_VERSION} { std::fill(data.begin(), data.end(), 0); }
+Packet::Packet() : version{PKT_VERSION} {
+  std::fill(data.begin(), data.end(), 0);
+}
 
-Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort, packetType type)
-    : version{PKT_VERSION}, sAddress{sAddr}, sPort{sPort}, tAddress{tAddr}, tPort{tPort},
-      type{type}, errorCorrectionCode(0) {
+Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort,
+               packetType type)
+    : version{PKT_VERSION}, sAddress{sAddr}, sPort{sPort}, tAddress{tAddr},
+      tPort{tPort}, type{type}, errorCorrectionCode(0) {
   std::fill(data.begin(), data.end(), 0);
 }
 
@@ -27,13 +30,18 @@ std::vector<uint8_t> Packet::serialize() {
   uint8_t type_byte = static_cast<uint8_t>(type);
   buffer.push_back(type_byte);
 
-  const uint8_t *fragmentNumber_ptr = reinterpret_cast<const uint8_t *>(&fragmentNumber);
-  buffer.insert(buffer.end(), fragmentNumber_ptr, fragmentNumber_ptr + sizeof(fragmentNumber));
+  const uint8_t *fragmentNumber_ptr =
+      reinterpret_cast<const uint8_t *>(&fragmentNumber);
+  buffer.insert(buffer.end(), fragmentNumber_ptr,
+                fragmentNumber_ptr + sizeof(fragmentNumber));
 
-  const uint8_t *fragmentCount_ptr = reinterpret_cast<const uint8_t *>(&fragmentCount);
-  buffer.insert(buffer.end(), fragmentCount_ptr, fragmentCount_ptr + sizeof(fragmentCount));
+  const uint8_t *fragmentCount_ptr =
+      reinterpret_cast<const uint8_t *>(&fragmentCount);
+  buffer.insert(buffer.end(), fragmentCount_ptr,
+                fragmentCount_ptr + sizeof(fragmentCount));
 
-  const uint8_t *errorCorrectionCode_ptr = reinterpret_cast<const uint8_t *>(&errorCorrectionCode);
+  const uint8_t *errorCorrectionCode_ptr =
+      reinterpret_cast<const uint8_t *>(&errorCorrectionCode);
   buffer.insert(buffer.end(), errorCorrectionCode_ptr,
                 errorCorrectionCode_ptr + sizeof(errorCorrectionCode));
 
@@ -64,13 +72,16 @@ Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
   packet.type = static_cast<packetType>(buffer[offset]);
   offset += sizeof(packet.type);
 
-  std::memcpy(&packet.fragmentNumber, &buffer[offset], sizeof(packet.fragmentNumber));
+  std::memcpy(&packet.fragmentNumber, &buffer[offset],
+              sizeof(packet.fragmentNumber));
   offset += sizeof(packet.fragmentNumber);
 
-  std::memcpy(&packet.fragmentCount, &buffer[offset], sizeof(packet.fragmentCount));
+  std::memcpy(&packet.fragmentCount, &buffer[offset],
+              sizeof(packet.fragmentCount));
   offset += sizeof(packet.fragmentCount);
 
-  std::memcpy(&packet.errorCorrectionCode, &buffer[offset], sizeof(packet.errorCorrectionCode));
+  std::memcpy(&packet.errorCorrectionCode, &buffer[offset],
+              sizeof(packet.errorCorrectionCode));
   offset += sizeof(packet.errorCorrectionCode);
 
   std::fill(packet.data.begin(), packet.data.end(), 0);

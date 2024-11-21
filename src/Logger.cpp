@@ -1,3 +1,3 @@
 #include "Logger.h"
 
-Logger& logger = Logger::getInstance();
+Logger &logger = Logger::getInstance();

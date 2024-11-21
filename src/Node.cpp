@@ -2,10 +2,12 @@
 #include "Logger.h"
 #include "Utility.h"
 
-Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
-           std::pair<double, double> coords, NetworkManager networkManager)
-    : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port),
-      coords(std::move(coords)), networkManager(std::move(networkManager)) {
+Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip,
+           int port, std::pair<double, double> coords,
+           NetworkManager networkManager)
+    : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip),
+      port(port), coords(std::move(coords)),
+      networkManager(std::move(networkManager)) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -20,7 +22,9 @@ std::string Node::getIP() const { return ip; }
 int Node::getPort() const { return port; }
 
 std::pair<double, double> Node::getCoords() const { return coords; }
-void Node::setCoords(const std::pair<double, double> &newCoords) { coords = newCoords; }
+void Node::setCoords(const std::pair<double, double> &newCoords) {
+  coords = newCoords;
+}
 
 NodeType::Type Node::getType() const { return type; }
 
@@ -28,20 +32,24 @@ bool Node::bind() {
   // Create a UDP socket
   socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (socket_fd < 0) {
-    logger.log(LogLevel::ERROR, "Failed to create socket for Node " + name + ": " + strerror(errno));
+    logger.log(LogLevel::ERROR, "Failed to create socket for Node " + name +
+                                    ": " + strerror(errno));
     return false;
   }
 
   // Bind the socket to the IP and Port
-  if (::bind(socket_fd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
-    logger.log(LogLevel::ERROR, "Failed to bind socket for Node " + name + ": " + strerror(errno));
+  if (::bind(socket_fd, reinterpret_cast<struct sockaddr *>(&addr),
+             sizeof(addr)) < 0) {
+    logger.log(LogLevel::ERROR, "Failed to bind socket for Node " + name +
+                                    ": " + strerror(errno));
     close(socket_fd);
     socket_fd = -1;
     return false;
   }
 
-  logger.log(LogLevel::INFO, "[NEXUS] Node " + name + " successfully bound to " +
-    ip + ":" + std::to_string(port));
+  logger.log(LogLevel::INFO, "[NEXUS] Node " + name +
+                                 " successfully bound to " + ip + ":" +
+                                 std::to_string(port));
   return true;
 }
 
@@ -50,19 +58,24 @@ void Node::updatePosition() {
     // Satellite nodes move based on below logic
     coords.first = roundToTwoDecimalPlaces(coords.first + 0.05);
     coords.second = roundToTwoDecimalPlaces(coords.second + 0.075);
-    logger.log(LogLevel::INFO, "[NEXUS] Satellite " + name + " new position: (" +
-      std::to_string(coords.first) + ", " + std::to_string(coords.second) + ")");
+    logger.log(LogLevel::INFO, "[NEXUS] Satellite " + name +
+                                   " new position: (" +
+                                   std::to_string(coords.first) + ", " +
+                                   std::to_string(coords.second) + ")");
     networkManager.updateNodeInRegistry(shared_from_this());
   } else if (type == NodeType::Type::GROUND) {
     // Ground nodes are stationary
-    logger.log(LogLevel::INFO, "[NEXUS] Ground node " + name + " remains stationary at (" +
-      std::to_string(coords.first) + ", " + std::to_string(coords.second) + ")");
+    logger.log(LogLevel::INFO, "[NEXUS] Ground node " + name +
+                                   " remains stationary at (" +
+                                   std::to_string(coords.first) + ", " +
+                                   std::to_string(coords.second) + ")");
   }
 }
 
 void Node::receiveMessage(std::string &message) {
   if (socket_fd < 0) {
-    logger.log(LogLevel::ERROR, "Socket is not initialized for receiving messages.");
+    logger.log(LogLevel::ERROR,
+               "Socket is not initialized for receiving messages.");
     return;
   }
 
@@ -70,22 +83,24 @@ void Node::receiveMessage(std::string &message) {
   constexpr size_t bufferSize = MAX_BUFFER_SIZE + 32;
   char buffer[bufferSize];
 
-  struct sockaddr_in senderAddr {};
+  struct sockaddr_in senderAddr{};
   socklen_t senderAddrLen = sizeof(senderAddr);
 
-  ssize_t bytesReceived =
-      recvfrom(socket_fd, buffer, bufferSize - 1, 0,
-               reinterpret_cast<struct sockaddr *>(&senderAddr), &senderAddrLen);
+  ssize_t bytesReceived = recvfrom(
+      socket_fd, buffer, bufferSize - 1, 0,
+      reinterpret_cast<struct sockaddr *>(&senderAddr), &senderAddrLen);
 
   if (bytesReceived < 0) {
-    logger.log(LogLevel::ERROR, "Failed to receive message: " + std::string(strerror(errno)));
+    logger.log(LogLevel::ERROR,
+               "Failed to receive message: " + std::string(strerror(errno)));
     return;
   }
 
   // Null-terminate the buffer to treat it as a string
   buffer[bytesReceived] = '\0';
   std::vector<uint8_t> receivedMessage(buffer, buffer + bufferSize);
-  logger.log(LogLevel::INFO, "[NEXUS] Buffer size: "  + std::to_string(receivedMessage.size()));
+  logger.log(LogLevel::INFO,
+             "[NEXUS] Buffer size: " + std::to_string(receivedMessage.size()));
 
   char senderIP[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &senderAddr.sin_addr, senderIP, sizeof(senderIP));
@@ -94,12 +109,13 @@ void Node::receiveMessage(std::string &message) {
   std::string senderName, targetIP;
   int targetPort = 0;
   logger.log(LogLevel::INFO, "[NEXUS] Received message from " +
-    std::string(senderIP) + ":" + std::to_string(senderPort));
+                                 std::string(senderIP) + ":" +
+                                 std::to_string(senderPort));
   Packet pkt = pkt.deserialize(receivedMessage);
 
   // std::ofstream debugFile("img3.webp", std::ios::binary | std::ios::app);
-  // debugFile.write(reinterpret_cast<char *>(pkt.data.data()), pkt.data.size());
-  // debugFile.close();
+  // debugFile.write(reinterpret_cast<char *>(pkt.data.data()),
+  // pkt.data.size()); debugFile.close();
 
   if ((pkt.tAddress == addr.sin_addr.s_addr) && (pkt.tPort == htons(port))) {
     processMessage(pkt);
@@ -109,7 +125,7 @@ void Node::receiveMessage(std::string &message) {
     int nextPort = ntohs(pkt.tPort);
 
     logger.log(LogLevel::INFO, "[NEXUS] Forwarding to " + std::string(nextIP) +
-      ":" + std::to_string(nextPort));
+                                   ":" + std::to_string(nextPort));
     sendTo(nextIP, nextPort, pkt);
 
     // Send to specified node
@@ -118,10 +134,11 @@ void Node::receiveMessage(std::string &message) {
   }
 }
 
-void Node::sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort,
+void Node::sendMessage(const std::string &targetName,
+                       const std::string &targetIP, int targetPort,
                        const std::string &message) {
   logger.log(LogLevel::INFO, "[NEXUS] Node " + name + " sending message from " +
-    ip + ":" + std::to_string(port));
+                                 ip + ":" + std::to_string(port));
 
   if (socket_fd < 0) {
     logger.log(LogLevel::ERROR, "Invalid socket descriptor. "
@@ -137,11 +154,12 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
     return;
   }
 
-  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr, targetAddr.sin_port,
-             packetType::TEXT);
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
+             targetAddr.sin_port, packetType::TEXT);
 
   auto packet_data = pkt.serialize();
-  logger.log(LogLevel::INFO, "[NEXUS] Packet size: " + std::to_string(packet_data.size()));
+  logger.log(LogLevel::INFO,
+             "[NEXUS] Packet size: " + std::to_string(packet_data.size()));
 
   if (packet_data.empty()) {
     logger.log(LogLevel::ERROR, "Failed to serialize packet. No data to send.");
@@ -155,26 +173,29 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   // for (auto n : networkManager.nextHop) {
   //   std::cout << n << " ";
   // }
-  // std::cout << "Sending (intermediate) to " << nextHop->name << " " << nextHop->ip << ":"
+  // std::cout << "Sending (intermediate) to " << nextHop->name << " " <<
+  // nextHop->ip << ":"
   //           << nextHop->port << std::endl;
 
   struct sockaddr_in nextAddr = {};
   nextAddr.sin_family = AF_INET;
   nextAddr.sin_port = htons(nextHop->getPort());
   if (inet_pton(AF_INET, nextHop->getIP().c_str(), &nextAddr.sin_addr) <= 0) {
-    logger.log(LogLevel::ERROR, "Invalid next hop IP address: " + nextHop->getIP());
+    logger.log(LogLevel::ERROR,
+               "Invalid next hop IP address: " + nextHop->getIP());
     return;
   }
 
-  const int bytesSent = sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
-                               reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
+  const int bytesSent =
+      sendto(socket_fd, packet_data.data(), packet_data.size(), 0,
+             reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
 
   if (bytesSent < 0) {
-    logger.log(LogLevel::ERROR, "Failed to send message:  " +
-      std::string(strerror(errno)));
+    logger.log(LogLevel::ERROR,
+               "Failed to send message:  " + std::string(strerror(errno)));
   } else {
-    logger.log(LogLevel::INFO, "[NEXUS] Sent message to " +
-      targetName + " at " + targetIP);
+    logger.log(LogLevel::INFO,
+               "[NEXUS] Sent message to " + targetName + " at " + targetIP);
   }
 }
 
@@ -187,21 +208,22 @@ void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
   auto pkt_data = pkt.serialize();
   auto p2 = pkt.deserialize(pkt_data);
 
-  const int bytesSent =
-      sendto(socket_fd, pkt_data.data(), pkt_data.size(), 0,
-             reinterpret_cast<struct sockaddr *>(&targetAddr), sizeof(targetAddr));
+  const int bytesSent = sendto(socket_fd, pkt_data.data(), pkt_data.size(), 0,
+                               reinterpret_cast<struct sockaddr *>(&targetAddr),
+                               sizeof(targetAddr));
 
   if (bytesSent < 0) {
-    logger.log(LogLevel::ERROR, "Failed to send data: " +
-      std::string(strerror(errno)));
+    logger.log(LogLevel::ERROR,
+               "Failed to send data: " + std::string(strerror(errno)));
   } else {
     logger.log(LogLevel::INFO, "[NEXUS] Sent " + std::to_string(bytesSent) +
-      " to " + targetIP + ":" + std::to_string(targetPort));
+                                   " to " + targetIP + ":" +
+                                   std::to_string(targetPort));
   }
 }
 
-void Node::sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
-                    const std::string &fileName) {
+void Node::sendFile(const std::string &targetName, const std::string &targetIP,
+                    int targetPort, const std::string &fileName) {
   struct sockaddr_in targetAddr = {};
   targetAddr.sin_family = AF_INET;
   targetAddr.sin_port = htons(targetPort);
@@ -212,13 +234,11 @@ void Node::sendFile(const std::string &targetName, const std::string &targetIP, 
   std::ifstream fileHandle(fileName, std::ios::binary | std::ios::ate);
   size_t file_size = fileHandle.tellg();
   int fragCount = std::ceil(static_cast<double>(file_size) / MAX_BUFFER_SIZE);
-  Packet pkt(addr.sin_addr.s_addr,
-    addr.sin_port,
-    targetAddr.sin_addr.s_addr,
-    targetAddr.sin_port,
-    packetType::FILE);
+  Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
+             targetAddr.sin_port, packetType::FILE);
   pkt.fragmentCount = fragCount;
-  logger.log(LogLevel::INFO, "[NEXUS] Fragment Count: " + std::to_string(pkt.fragmentCount));
+  logger.log(LogLevel::INFO,
+             "[NEXUS] Fragment Count: " + std::to_string(pkt.fragmentCount));
 
   fileHandle.seekg(0, std::ios::beg);
   int fragNumber = 1;
@@ -227,8 +247,10 @@ void Node::sendFile(const std::string &targetName, const std::string &targetIP, 
   for (int i = 0; i < fragCount; i++) {
     fileHandle.read(reinterpret_cast<char *>(buffer.data()), MAX_BUFFER_SIZE);
     auto byteCount = fileHandle.gcount();
-    logger.log(LogLevel::INFO, "[NEXUS] Read:  " + std::to_string(byteCount) + " bytes.");
-    logger.log(LogLevel::INFO, "[NEXUS] Sending fragment: " + std::to_string(fragNumber));
+    logger.log(LogLevel::INFO,
+               "[NEXUS] Read:  " + std::to_string(byteCount) + " bytes.");
+    logger.log(LogLevel::INFO,
+               "[NEXUS] Sending fragment: " + std::to_string(fragNumber));
 
     pkt.fragmentNumber = fragNumber++;
     pkt.data = buffer;
@@ -244,8 +266,9 @@ void Node::sendFile(const std::string &targetName, const std::string &targetIP, 
   logger.log(LogLevel::INFO, "[NEXUS] File sent. ");
 }
 
-std::string Node::extractMessage(const std::string &payload, std::string &senderName,
-                                 std::string &targetIP, int &targetPort) {
+std::string Node::extractMessage(const std::string &payload,
+                                 std::string &senderName, std::string &targetIP,
+                                 int &targetPort) {
   std::istringstream iss(payload);
   std::string portStr;
   std::string actualMessage;
@@ -255,13 +278,15 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
     try {
       targetPort = std::stoi(portStr); // Convert port to integer
     } catch (const std::exception &e) {
-      logger.log(LogLevel::ERROR, "Invalid port in message payload: " + portStr);
+      logger.log(LogLevel::ERROR,
+                 "Invalid port in message payload: " + portStr);
       return "";
     }
 
     // Extract the remaining part of the payload as the actual message
     std::getline(iss, actualMessage);
-    actualMessage.erase(0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
+    actualMessage.erase(
+        0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
   } else {
     logger.log(LogLevel::ERROR, "Malformed message payload: " + payload);
   }
@@ -298,17 +323,21 @@ std::string Node::generateUUID() {
 void Node::simulateSignalDelay() {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis(0.1, 2.0); // Random delay between 0.1s and 2.0s
+  std::uniform_real_distribution<> dis(
+      0.1, 2.0); // Random delay between 0.1s and 2.0s
   delay = dis(gen);
-  std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(delay * 1000)));
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(static_cast<int>(delay * 1000)));
 }
 
 void Node::processMessage(Packet &pkt) {
   logger.log(LogLevel::INFO, "[NEXUS] Processing message from " +
-    std::to_string(pkt.sAddress) + ":" + std::to_string(pkt.sPort));
+                                 std::to_string(pkt.sAddress) + ":" +
+                                 std::to_string(pkt.sPort));
   if (pkt.type == packetType::FILE) {
     logger.log(LogLevel::INFO, "[NEXUS] Writing to file, Fragment: " +
-      std::to_string(pkt.fragmentNumber) + "/" + std::to_string(pkt.fragmentCount));
+                                   std::to_string(pkt.fragmentNumber) + "/" +
+                                   std::to_string(pkt.fragmentCount));
     writeToFile(pkt);
     reassembleFile(pkt);
   } else {
@@ -318,7 +347,8 @@ void Node::processMessage(Packet &pkt) {
 
 void Node::writeToFile(Packet &pkt) {
   std::ostringstream oss;
-  oss << "/tmp/" << pkt.sAddress << "_" << pkt.sPort << "_" << pkt.fragmentNumber;
+  oss << "/tmp/" << pkt.sAddress << "_" << pkt.sPort << "_"
+      << pkt.fragmentNumber;
   std::string filename = oss.str();
 
   std::ofstream ofs(filename, std::ios::binary);
@@ -334,7 +364,8 @@ void Node::reassembleFile(Packet &pkt) {
   std::string path = "/tmp/";
   DIR *dir = opendir(path.c_str());
   if (dir == nullptr) {
-    logger.log(LogLevel::ERROR, "[REASSEMBLY] Failed to open directory: " + path);
+    logger.log(LogLevel::ERROR,
+               "[REASSEMBLY] Failed to open directory: " + path);
     return;
   }
 
@@ -349,7 +380,9 @@ void Node::reassembleFile(Packet &pkt) {
   closedir(dir);
 
   if (count != pkt.fragmentCount) {
-    logger.log(LogLevel::WARNING, "[REASSEMBLY] Missing fragments: " + std::to_string(pkt.fragmentCount - count));
+    logger.log(LogLevel::WARNING,
+               "[REASSEMBLY] Missing fragments: " +
+                   std::to_string(pkt.fragmentCount - count));
     return;
   }
 

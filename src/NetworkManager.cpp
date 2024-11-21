@@ -2,41 +2,47 @@
 #include <iostream>
 #include <json/json.h>
 
-#include "Node.h"
 #include "Logger.h"
 #include "NetworkManager.h"
+#include "Node.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
 // Helper: Check if a node exists in the list
-bool NetworkManager::nodeExists(const std::shared_ptr<Node>& node) const {
-  return std::any_of(nodes.begin(), nodes.end(), [&](const std::shared_ptr<Node>& existingNode) {
-    return existingNode->getName() == node->getName() &&
-           existingNode->getIP() == node->getIP() &&
-           existingNode->getPort() == node->getPort();
-  });
+bool NetworkManager::nodeExists(const std::shared_ptr<Node> &node) const {
+  return std::any_of(nodes.begin(), nodes.end(),
+                     [&](const std::shared_ptr<Node> &existingNode) {
+                       return existingNode->getName() == node->getName() &&
+                              existingNode->getIP() == node->getIP() &&
+                              existingNode->getPort() == node->getPort();
+                     });
 }
 
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
+                            std::string *s) {
   size_t totalSize = size * nmemb;
   if (s) {
-    s->append(static_cast<char*>(contents), totalSize);
+    s->append(static_cast<char *>(contents), totalSize);
     return totalSize;
   }
   return 0;
 }
 
 // Helper: Perform CURL requests
-bool NetworkManager::performCurlRequest(const std::string& url, const std::string& payload, std::string& response) {
-  logger.log(LogLevel::INFO, "[NEXUS] Performing request to NexusRegistryServer ...");
-  CURL* curl = curl_easy_init();
+bool NetworkManager::performCurlRequest(const std::string &url,
+                                        const std::string &payload,
+                                        std::string &response) {
+  logger.log(LogLevel::INFO,
+             "[NEXUS] Performing request to NexusRegistryServer ...");
+  CURL *curl = curl_easy_init();
   if (!curl) {
     logger.log(LogLevel::ERROR, "Failed to initialize CURL.");
     return false;
   }
 
-  struct curl_slist* headers = curl_slist_append(nullptr, "Content-Type: application/json");
+  struct curl_slist *headers =
+      curl_slist_append(nullptr, "Content-Type: application/json");
   if (!headers) {
     logger.log(LogLevel::ERROR, "Failed to set CURL headers.");
     curl_easy_cleanup(curl);
@@ -48,32 +54,33 @@ bool NetworkManager::performCurlRequest(const std::string& url, const std::strin
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);         // Set timeout
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);  // Set connection timeout
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);       // Set timeout
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L); // Set connection timeout
 
   CURLcode res = curl_easy_perform(curl);
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
 
   if (res != CURLE_OK) {
-  logger.log(LogLevel::ERROR, "Failed to send CURL request: " + std::string(curl_easy_strerror(res)));
+    logger.log(LogLevel::ERROR, "Failed to send CURL request: " +
+                                    std::string(curl_easy_strerror(res)));
     return false;
   }
 
   long httpCode = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
   if (httpCode >= 400) {
-    logger.log(LogLevel::ERROR, "Server responded with HTTP code: " + std::to_string(httpCode));
+    logger.log(LogLevel::ERROR,
+               "Server responded with HTTP code: " + std::to_string(httpCode));
     return false;
   }
 
   return true;
 }
 
-
-void NetworkManager::addNode(const std::shared_ptr<Node>& node) {
+void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
   if (nodeExists(node)) {
-    for (auto& existingNode : nodes) {
+    for (auto &existingNode : nodes) {
       if (existingNode->getName() == node->getName()) {
         existingNode->setCoords(node->getCoords());
         return;
@@ -82,43 +89,49 @@ void NetworkManager::addNode(const std::shared_ptr<Node>& node) {
   }
 
   nodes.push_back(node);
-  logger.log(LogLevel::INFO, "[NEXUS] Added node: " + node->getName() + " (" + node->getId() + ") at " +
-      node->getIP() + ":" + std::to_string(node->getPort()) + " to the network.");
+  logger.log(LogLevel::INFO, "[NEXUS] Added node: " + node->getName() + " (" +
+                                 node->getId() + ") at " + node->getIP() + ":" +
+                                 std::to_string(node->getPort()) +
+                                 " to the network.");
 }
 
 void NetworkManager::removeNode(const std::string &id) {
-  auto it = std::remove_if(nodes.begin(), nodes.end(), [&id](const std::shared_ptr<Node> &node) {
-    return node->getId() == id;
-  });
+  auto it = std::remove_if(
+      nodes.begin(), nodes.end(),
+      [&id](const std::shared_ptr<Node> &node) { return node->getId() == id; });
 
   if (it != nodes.end()) {
     nodes.erase(it, nodes.end());
     logger.log(LogLevel::INFO, "[NEXUS] Removed node with ID: " + id);
   } else {
-    logger.log(LogLevel::WARNING, "[NEXUS] Node with ID " + id + " not found in the network.");
+    logger.log(LogLevel::WARNING,
+               "[NEXUS] Node with ID " + id + " not found in the network.");
   }
 }
 
 void NetworkManager::listNodes() const {
   if (nodes.empty()) {
-    logger.log(LogLevel::INFO, "[NEXUS] No nodes are currently registered in the network.");
+    logger.log(LogLevel::INFO,
+               "[NEXUS] No nodes are currently registered in the network.");
     return;
   }
 
-  logger.log(LogLevel::INFO, "[NEXUS] Listing nodes identified in the local network.");
-  for (const std::shared_ptr<Node>& node : nodes) {
+  logger.log(LogLevel::INFO,
+             "[NEXUS] Listing nodes identified in the local network.");
+  for (const std::shared_ptr<Node> &node : nodes) {
     auto coords = node->getCoords();
-    logger.log(LogLevel::INFO, "[NEXUS] " +
-      NodeType::toString(node->getType()) + " " + node->getName() + " (" +
-      node->getId() + ") at " + node->getIP() + ":" + std::to_string(node->getPort()) +
-      " [" + std::to_string(coords.first) + ", " + std::to_string(coords.second) + "]"
-    );
+    logger.log(LogLevel::INFO,
+               "[NEXUS] " + NodeType::toString(node->getType()) + " " +
+                   node->getName() + " (" + node->getId() + ") at " +
+                   node->getIP() + ":" + std::to_string(node->getPort()) +
+                   " [" + std::to_string(coords.first) + ", " +
+                   std::to_string(coords.second) + "]");
   }
 }
 
 std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
-  for (const std::shared_ptr<Node>& node : nodes) {
+  for (const std::shared_ptr<Node> &node : nodes) {
     if (node->getType() == NodeType::SATELLITE) {
       satellites.push_back(node);
     }
@@ -126,23 +139,29 @@ std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   return satellites;
 }
 
-bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node>& node) {
-  logger.log(LogLevel::DEBUG, "[NEXUS] Registering node at NexusRegistryServer ...");
+bool NetworkManager::registerNodeWithRegistry(
+    const std::shared_ptr<Node> &node) {
+  logger.log(LogLevel::DEBUG,
+             "[NEXUS] Registering node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("register", node);
   std::string url = registryAddress + "/register";
   std::string response;
   return performCurlRequest(url, payload.toStyledString(), response);
 }
 
-void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node>& node) {
-  logger.log(LogLevel::DEBUG, "[NEXUS] Deregistering node at NexusRegistryServer ...");
+void NetworkManager::deregisterNodeWithRegistry(
+    const std::shared_ptr<Node> &node) {
+  logger.log(LogLevel::DEBUG,
+             "[NEXUS] Deregistering node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("deregister", node);
   std::string url = registryAddress + "/deregister";
   std::string response;
   performCurlRequest(url, payload.toStyledString(), response);
 }
 
-Json::Value NetworkManager::createNodePayload(const std::string& action, const std::shared_ptr<Node>& node) {
+Json::Value
+NetworkManager::createNodePayload(const std::string &action,
+                                  const std::shared_ptr<Node> &node) {
   Json::Value payload;
   payload["action"] = action;
   payload["type"] = NodeType::toString(node->getType());
@@ -155,8 +174,9 @@ Json::Value NetworkManager::createNodePayload(const std::string& action, const s
   return payload;
 }
 
-bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node>& node) {
-  logger.log(LogLevel::DEBUG, "[NEXUS] Updating node at NexusRegistryServer ...");
+bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node> &node) {
+  logger.log(LogLevel::DEBUG,
+             "[NEXUS] Updating node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("update", node);
   std::string url = registryAddress + "/update";
   std::string response;
@@ -180,24 +200,27 @@ void NetworkManager::fetchNodesFromRegistry() {
   }
 
   if (!nodeListJson.isArray()) {
-    logger.log(LogLevel::ERROR, "Unexpected response format: Expected an array.");
+    logger.log(LogLevel::ERROR,
+               "Unexpected response format: Expected an array.");
     return;
   }
 
-  for (const auto& nodeJson : nodeListJson) {
+  for (const auto &nodeJson : nodeListJson) {
     if (!nodeJson.isObject()) {
       logger.log(LogLevel::ERROR, "Malformed node entry in response.");
       continue;
     }
 
     auto node = parseNodeFromJson(nodeJson);
-    if (node) addNode(node);
+    if (node)
+      addNode(node);
   }
 }
 
-
-std::shared_ptr<Node> NetworkManager::parseNodeFromJson(const Json::Value& nodeJson) const {
-  if (!nodeJson.isMember("name") || !nodeJson.isMember("ip") || !nodeJson.isMember("port")) {
+std::shared_ptr<Node>
+NetworkManager::parseNodeFromJson(const Json::Value &nodeJson) const {
+  if (!nodeJson.isMember("name") || !nodeJson.isMember("ip") ||
+      !nodeJson.isMember("port")) {
     logger.log(LogLevel::ERROR, "Missing required fields in node JSON.");
     return nullptr;
   }
@@ -206,8 +229,9 @@ std::shared_ptr<Node> NetworkManager::parseNodeFromJson(const Json::Value& nodeJ
   double y = nodeJson.get("y", 0.0).asDouble();
   NodeType::Type type = NodeType::fromString(nodeJson["type"].asString());
 
-  return std::make_shared<Node>(type, nodeJson["name"].asString(), nodeJson["ip"].asString(),
-                                nodeJson["port"].asInt(), std::make_pair(x, y), *this);
+  return std::make_shared<Node>(
+      type, nodeJson["name"].asString(), nodeJson["ip"].asString(),
+      nodeJson["port"].asInt(), std::make_pair(x, y), *this);
 }
 
 void NetworkManager::createRoutingTable() {
@@ -220,53 +244,53 @@ void NetworkManager::createRoutingTable() {
 }
 
 void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
-    if (nodes.size() != topology.size()) {
-        createRoutingTable();
+  if (nodes.size() != topology.size()) {
+    createRoutingTable();
+  }
+
+  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < nodes.size(); j++) {
+      auto i_coords = nodes[i]->getCoords();
+      auto j_coords = nodes[j]->getCoords();
+
+      int x_diff = std::pow(i_coords.first - j_coords.first, 2);
+      int y_diff = std::pow(i_coords.second - j_coords.second, 2);
+
+      int weight = 0;
+
+      auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
+      auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
+
+      if (i_isGround && j_isGround) {
+        weight += 10000; // PRIORITIZE SATELLITE
+      } else if (i_isGround) {
+        weight += 50;
+      } else if (j_isGround) {
+        weight += 50;
+      }
+
+      topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
+      topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
     }
+  }
 
-    for (int i = 0; i < nodes.size(); i++) {
-        for (int j = 0; j < nodes.size(); j++) {
-            auto i_coords = nodes[i]->getCoords();
-            auto j_coords = nodes[j]->getCoords();
-
-            int x_diff = std::pow(i_coords.first - j_coords.first, 2);
-            int y_diff = std::pow(i_coords.second - j_coords.second, 2);
-
-            int weight = 0;
-
-            auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
-            auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
-
-            if (i_isGround && j_isGround) {
-                weight += 10000; // PRIORITIZE SATELLITE
-            } else if (i_isGround) {
-                weight += 50;
-            } else if (j_isGround) {
-                weight += 50;
-            }
-
-            topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
-            topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
-        }
+  for (int i = 0; i < nodes.size(); i++) {
+    std::string row;
+    for (int j = 0; j < nodes.size(); j++) {
+      row += std::to_string(topology[i][j]) + "\t";
     }
+    logger.log(LogLevel::DEBUG, row);
+  }
 
-    for (int i = 0; i < nodes.size(); i++) {
-        std::string row;
-        for (int j = 0; j < nodes.size(); j++) {
-            row += std::to_string(topology[i][j]) + "\t";
-        }
-        logger.log(LogLevel::DEBUG, row);
+  int src_idx = 0;
+  for (int i = 0; i < nodes.size(); i++) {
+    if (nodes[i]->getId() == src->getId()) {
+      src_idx = i;
+      break;
     }
+  }
 
-    int src_idx = 0;
-    for (int i = 0; i < nodes.size(); i++) {
-        if (nodes[i]->getId() == src->getId()) {
-            src_idx = i;
-            break;
-        }
-    }
-
-    route(src_idx);
+  route(src_idx);
 }
 
 void NetworkManager::route(int src_idx) {

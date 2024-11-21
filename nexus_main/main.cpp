@@ -5,10 +5,10 @@
 
 #include <cstring>
 
-#include "../src/Node.h"
 #include "../src/Logger.h"
-#include "../src/NodeType.h"
 #include "../src/NetworkManager.h"
+#include "../src/Node.h"
+#include "../src/NodeType.h"
 
 const int UPDATE_INTERVAL = 3;
 
@@ -16,7 +16,8 @@ NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
 
 void printUsage() {
-  std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port "
+  std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip "
+               "<IP_ADDRESS> -port "
                "<PORT> -x <X_COORD> -y <Y_COORD>"
             << std::endl;
 }
@@ -68,8 +69,8 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::getline(std::cin, message);
 
       if (!message.empty()) {
-        std::string fullMessage =
-            node->getName() + " " + targetIP + " " + std::to_string(targetPort) + " " + message;
+        std::string fullMessage = node->getName() + " " + targetIP + " " +
+                                  std::to_string(targetPort) + " " + message;
         node->sendMessage(targetName, targetIP, targetPort, fullMessage);
       } else {
         logger.log(LogLevel::ERROR, "Message cannot be empty.");
@@ -106,8 +107,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
       break;
     } else if (command == "help") {
       printCommands();
-    }
-    else {
+    } else {
       logger.log(LogLevel::ERROR, "Unknown command.");
       printCommands();
     }
@@ -150,7 +150,9 @@ int main(int argc, char **argv) {
   logger.log(LogLevel::INFO, "[NEXUS] NODE: " + nodeType);
 
   if (nodeTypeEnum != NodeType::GROUND && nodeTypeEnum != NodeType::SATELLITE) {
-    logger.log(LogLevel::ERROR, "Invalid node type. Must be 'ground' or 'satellite'.");    printUsage();
+    logger.log(LogLevel::ERROR,
+               "Invalid node type. Must be 'ground' or 'satellite'.");
+    printUsage();
     return 3;
   }
 
@@ -159,19 +161,21 @@ int main(int argc, char **argv) {
 
   if (nodeTypeEnum == NodeType::GROUND) {
     logger.log(LogLevel::INFO, "[NEXUS] Creating a Ground Node ...");
-    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
+    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords,
+                                  networkManager);
     node->updatePosition();
   } else {
     logger.log(LogLevel::INFO, "[NEXUS] Creating a Satellite Node ...");
-    auto satelliteNode =
-        std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
+    auto satelliteNode = std::make_shared<Node>(nodeTypeEnum, name, ip, port,
+                                                coords, networkManager);
     node = satelliteNode;
 
     // Create a thread to update position periodically
     positionUpdateThread = std::thread([satelliteNode]() {
       while (isRunning) {
         satelliteNode->updatePosition();
-        std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL)); // Update position every 2 second
+        std::this_thread::sleep_for(std::chrono::seconds(
+            UPDATE_INTERVAL)); // Update position every 2 second
       }
     });
   }
@@ -184,7 +188,8 @@ int main(int argc, char **argv) {
   }
 
   logger.log(LogLevel::INFO, "[NEXUS] Node is ready for UDP communication at " +
-                                   node->getIP() + ":" + std::to_string(node->getPort()));
+                                 node->getIP() + ":" +
+                                 std::to_string(node->getPort()));
   logger.log(LogLevel::INFO, "[NEXUS] Node is running. Press q to terminate.");
 
   std::thread receiverThread(receiverFunction, node);
@@ -192,8 +197,9 @@ int main(int argc, char **argv) {
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
-      logger.log(LogLevel::INFO, "[NEXUS] Refreshing local network manager every " +
-        std::to_string(UPDATE_INTERVAL) + " seconds ...");
+      logger.log(LogLevel::INFO,
+                 "[NEXUS] Refreshing local network manager every " +
+                     std::to_string(UPDATE_INTERVAL) + " seconds ...");
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));

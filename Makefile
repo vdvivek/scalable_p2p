@@ -34,8 +34,10 @@ NEXUS_OBJECTS = $(NEXUS_SOURCES:.cpp=.o)
 REGISTRY_OBJECTS = $(REGISTRY_SOURCES:.cpp=.o)
 
 # Targets
-all: tidy nexus registry_server
+all: format tidy nexus registry_server
 
+format:
+	find . -name '*.cpp' -o -name '*.h' -name '*.hpp' | xargs clang-format -i
 tidy:
 	clang-tidy $(NEXUS_SOURCES) $(REGISTRY_SOURCES) -p cmake-build-debug
 
