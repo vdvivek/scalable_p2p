@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Logger.h"
 #include "Utility.h"
 
 struct NodeInfo {

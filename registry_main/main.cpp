@@ -1,3 +1,4 @@
+#include "../src/Logger.h"
 #include "../src/NexusRegistryServer.h"
 
 int main(int argc, char **argv) {
@@ -6,7 +7,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  NexusRegistryServer server(std::stoi(argv[1])); // Port for the registry server
+  logger.setLogLevel(LogLevel::INFO);
+  logger.log(LogLevel::INFO, "Starting Nexus Registry Server...");
+
+  NexusRegistryServer server(
+      std::stoi(argv[1])); // Port for the registry server
   server.start();
   return 0;
 }

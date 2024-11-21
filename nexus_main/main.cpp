@@ -5,17 +5,19 @@
 
 #include <cstring>
 
+#include "../src/Logger.h"
 #include "../src/NetworkManager.h"
 #include "../src/Node.h"
 #include "../src/NodeType.h"
 
-const int UPDATE_INTERVAL = 30;
+const int UPDATE_INTERVAL = 3;
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
 
 void printUsage() {
-  std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip <IP_ADDRESS> -port "
+  std::cout << "[USAGE] ./nexus -node [ground|satellite] -name <NODE_NAME> -ip "
+               "<IP_ADDRESS> -port "
                "<PORT> -x <X_COORD> -y <Y_COORD>"
             << std::endl;
 }
@@ -34,7 +36,7 @@ void receiverFunction(const std::shared_ptr<Node> &node) {
     std::string receivedMessage;
     node->receiveMessage(receivedMessage);
     if (!receivedMessage.empty()) {
-      std::cout << "[MESSAGE RECEIVED]" << std::endl;
+      logger.log(LogLevel::INFO, "[NEXUS] Message received.");
       // Reprint the prompt after receiving a message
       std::cout << node->getName() << " prompt: " << std::flush;
     }
@@ -67,11 +69,11 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::getline(std::cin, message);
 
       if (!message.empty()) {
-        std::string fullMessage =
-            node->getName() + " " + targetIP + " " + std::to_string(targetPort) + " " + message;
+        std::string fullMessage = node->getName() + " " + targetIP + " " +
+                                  std::to_string(targetPort) + " " + message;
         node->sendMessage(targetName, targetIP, targetPort, fullMessage);
       } else {
-        std::cerr << "[ERROR] Message cannot be empty." << std::endl;
+        logger.log(LogLevel::ERROR, "Message cannot be empty.");
       }
     } else if (command == "file") {
       std::cout << "Enter target node name: ";
@@ -90,24 +92,23 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::cin >> message;
 
       if (message.empty()) {
-        std::cerr << "[ERROR] File name cannot be empty." << std::endl;
+        logger.log(LogLevel::ERROR, "File name cannot be empty.");
         continue;
       }
 
       node->sendFile(targetName, targetIP, targetPort, message);
     } else if (command == "list") {
-      networkManager.listNodes(); // Call listNodes to print node details
+      networkManager.listNodes();
     }
     // Handle "q" for quitting
     else if (command == "q") {
-      std::cout << "[INFO] Goodbye..." << std::endl;
+      logger.log(LogLevel::INFO, "[NEXUS] Exiting ...");
       isRunning = false; // Signal shutdown
       break;
     } else if (command == "help") {
       printCommands();
-    }
-    else {
-      std::cerr << "[ERROR] Unknown command.\n";
+    } else {
+      logger.log(LogLevel::ERROR, "Unknown command.");
       printCommands();
     }
     std::cout << std::endl;
@@ -146,10 +147,11 @@ int main(int argc, char **argv) {
   }
 
   NodeType::Type nodeTypeEnum = NodeType::fromString(nodeType);
-  std::cout << nodeType << std::endl;
+  logger.log(LogLevel::INFO, "[NEXUS] NODE: " + nodeType);
 
   if (nodeTypeEnum != NodeType::GROUND && nodeTypeEnum != NodeType::SATELLITE) {
-    std::cerr << "[ERROR] Invalid node type. Must be 'ground' or 'satellite'." << std::endl;
+    logger.log(LogLevel::ERROR,
+               "Invalid node type. Must be 'ground' or 'satellite'.");
     printUsage();
     return 3;
   }
@@ -158,42 +160,46 @@ int main(int argc, char **argv) {
   std::thread positionUpdateThread;
 
   if (nodeTypeEnum == NodeType::GROUND) {
-    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
-    std::cout << "[INFO] Creating a GroundNode..." << std::endl;
+    logger.log(LogLevel::INFO, "[NEXUS] Creating a Ground Node ...");
+    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords,
+                                  networkManager);
     node->updatePosition();
   } else {
-    auto satelliteNode =
-        std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
+    logger.log(LogLevel::INFO, "[NEXUS] Creating a Satellite Node ...");
+    auto satelliteNode = std::make_shared<Node>(nodeTypeEnum, name, ip, port,
+                                                coords, networkManager);
     node = satelliteNode;
 
     // Create a thread to update position periodically
     positionUpdateThread = std::thread([satelliteNode]() {
       while (isRunning) {
         satelliteNode->updatePosition();
-        std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every 2 second
+        std::this_thread::sleep_for(std::chrono::seconds(
+            UPDATE_INTERVAL)); // Update position every 2 second
       }
     });
-
-    std::cout << "[INFO] Creating a SatelliteNode..." << std::endl;
   }
 
   networkManager.registerNodeWithRegistry(node);
 
   if (!node->bind()) {
-    std::cerr << "[ERROR] Failed to bind the node. Exiting." << std::endl;
+    logger.log(LogLevel::ERROR, "Failed to bind the node. Exiting.");
     return 4;
   }
 
-  std::cout << "[NEXUS] " << node->getName() << " is ready for UDP communication at "
-            << node->getIP() << ":" << node->getPort() << "" << std::endl;
-  std::cout << "[NEXUS] Node is running. Press Ctrl+C OR q to terminate." << std::endl;
+  logger.log(LogLevel::INFO, "[NEXUS] Node is ready for UDP communication at " +
+                                 node->getIP() + ":" +
+                                 std::to_string(node->getPort()));
+  logger.log(LogLevel::INFO, "[NEXUS] Node is running. Press q to terminate.");
 
   std::thread receiverThread(receiverFunction, node);
 
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
-      std::cout << std::endl << "Refreshing NetworkManager..." << std::endl;
+      logger.log(LogLevel::INFO,
+                 "[NEXUS] Refreshing local network manager every " +
+                     std::to_string(UPDATE_INTERVAL) + " seconds ...");
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));

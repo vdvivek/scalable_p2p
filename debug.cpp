@@ -2,7 +2,8 @@
 #include <iostream>
 #include <string>
 
-static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *s) {
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
+                            std::string *s) {
   size_t totalSize = size * nmemb;
   s->append(static_cast<char *>(contents), totalSize);
   std::cout << "[DEBUG] Callback invoked. Data: " << *s << std::endl;

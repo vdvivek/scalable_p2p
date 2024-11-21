@@ -1,6 +1,6 @@
 .vscode
 build
-
+*.o
 .idea
 cmake-build-debug
 *.dSYM
