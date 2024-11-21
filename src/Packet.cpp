@@ -1,4 +1,6 @@
 #include "Packet.hpp"
+#include <arpa/inet.h> // For htonl, ntohl, etc.
+#include <stdexcept>
 
 Packet::Packet() : version{PKT_VERSION} {
   std::fill(data.begin(), data.end(), 0);
@@ -13,37 +15,41 @@ Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort,
 
 std::vector<uint8_t> Packet::serialize() {
   std::vector<uint8_t> buffer;
+  buffer.reserve(sizeof(Packet));
+
   buffer.push_back(version);
 
-  const uint8_t *sAddress_ptr = reinterpret_cast<const uint8_t *>(&sAddress);
-  buffer.insert(buffer.end(), sAddress_ptr, sAddress_ptr + sizeof(sAddress));
+  uint32_t sAddr = htonl(sAddress);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&sAddr),
+                reinterpret_cast<const uint8_t *>(&sAddr) + sizeof(sAddr));
 
-  const uint8_t *sPort_ptr = reinterpret_cast<const uint8_t *>(&sPort);
-  buffer.insert(buffer.end(), sPort_ptr, sPort_ptr + sizeof(sPort));
+  uint16_t sPrt = htons(sPort);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&sPrt),
+                reinterpret_cast<const uint8_t *>(&sPrt) + sizeof(sPrt));
 
-  const uint8_t *tAddress_ptr = reinterpret_cast<const uint8_t *>(&tAddress);
-  buffer.insert(buffer.end(), tAddress_ptr, tAddress_ptr + sizeof(tAddress));
+  uint32_t tAddr = htonl(tAddress);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&tAddr),
+                reinterpret_cast<const uint8_t *>(&tAddr) + sizeof(tAddr));
 
-  const uint8_t *tPort_ptr = reinterpret_cast<const uint8_t *>(&tPort);
-  buffer.insert(buffer.end(), tPort_ptr, tPort_ptr + sizeof(tPort));
+  uint16_t tPrt = htons(tPort);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&tPrt),
+                reinterpret_cast<const uint8_t *>(&tPrt) + sizeof(tPrt));
 
-  uint8_t type_byte = static_cast<uint8_t>(type);
-  buffer.push_back(type_byte);
+  uint8_t typeByte = static_cast<uint8_t>(type);
+  buffer.push_back(typeByte);
 
-  const uint8_t *fragmentNumber_ptr =
-      reinterpret_cast<const uint8_t *>(&fragmentNumber);
-  buffer.insert(buffer.end(), fragmentNumber_ptr,
-                fragmentNumber_ptr + sizeof(fragmentNumber));
+  uint16_t fragNum = htons(fragmentNumber);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&fragNum),
+                reinterpret_cast<const uint8_t *>(&fragNum) + sizeof(fragNum));
 
-  const uint8_t *fragmentCount_ptr =
-      reinterpret_cast<const uint8_t *>(&fragmentCount);
-  buffer.insert(buffer.end(), fragmentCount_ptr,
-                fragmentCount_ptr + sizeof(fragmentCount));
+  uint16_t fragCount = htons(fragmentCount);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&fragCount),
+                reinterpret_cast<const uint8_t *>(&fragCount) +
+                    sizeof(fragCount));
 
-  const uint8_t *errorCorrectionCode_ptr =
-      reinterpret_cast<const uint8_t *>(&errorCorrectionCode);
-  buffer.insert(buffer.end(), errorCorrectionCode_ptr,
-                errorCorrectionCode_ptr + sizeof(errorCorrectionCode));
+  uint32_t crc = htonl(errorCorrectionCode);
+  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&crc),
+                reinterpret_cast<const uint8_t *>(&crc) + sizeof(crc));
 
   buffer.insert(buffer.end(), data.begin(), data.end());
 
@@ -51,41 +57,50 @@ std::vector<uint8_t> Packet::serialize() {
 }
 
 Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
+  if (buffer.size() < sizeof(Packet)) {
+    throw std::runtime_error("Buffer size too small for deserialization");
+  }
+
   Packet packet;
   size_t offset = 0;
 
-  packet.version = buffer[offset];
-  offset += sizeof(packet.version);
-
+  packet.version = buffer[offset++];
   std::memcpy(&packet.sAddress, &buffer[offset], sizeof(packet.sAddress));
+  packet.sAddress = ntohl(packet.sAddress);
   offset += sizeof(packet.sAddress);
 
   std::memcpy(&packet.sPort, &buffer[offset], sizeof(packet.sPort));
+  packet.sPort = ntohs(packet.sPort);
   offset += sizeof(packet.sPort);
 
   std::memcpy(&packet.tAddress, &buffer[offset], sizeof(packet.tAddress));
+  packet.tAddress = ntohl(packet.tAddress);
   offset += sizeof(packet.tAddress);
 
   std::memcpy(&packet.tPort, &buffer[offset], sizeof(packet.tPort));
+  packet.tPort = ntohs(packet.tPort);
   offset += sizeof(packet.tPort);
 
-  packet.type = static_cast<packetType>(buffer[offset]);
-  offset += sizeof(packet.type);
+  packet.type = static_cast<packetType>(buffer[offset++]);
 
   std::memcpy(&packet.fragmentNumber, &buffer[offset],
               sizeof(packet.fragmentNumber));
+  packet.fragmentNumber = ntohs(packet.fragmentNumber);
   offset += sizeof(packet.fragmentNumber);
 
   std::memcpy(&packet.fragmentCount, &buffer[offset],
               sizeof(packet.fragmentCount));
+  packet.fragmentCount = ntohs(packet.fragmentCount);
   offset += sizeof(packet.fragmentCount);
 
   std::memcpy(&packet.errorCorrectionCode, &buffer[offset],
               sizeof(packet.errorCorrectionCode));
+  packet.errorCorrectionCode = ntohl(packet.errorCorrectionCode);
   offset += sizeof(packet.errorCorrectionCode);
 
   std::fill(packet.data.begin(), packet.data.end(), 0);
   std::memcpy(packet.data.data(), &buffer[offset], packet.data.size());
+
   return packet;
 }
 
@@ -94,10 +109,7 @@ uint32_t Packet::calculateCRC(const std::vector<uint8_t> &data) {
   for (auto byte : data) {
     crc ^= byte;
     for (int i = 0; i < 8; ++i) {
-      if (crc & 1)
-        crc = (crc >> 1) ^ 0xEDB88320;
-      else
-        crc >>= 1;
+      crc = (crc & 1) ? (crc >> 1) ^ 0xEDB88320 : crc >> 1;
     }
   }
   return ~crc;

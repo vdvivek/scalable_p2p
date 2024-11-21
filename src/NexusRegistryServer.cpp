@@ -75,7 +75,8 @@ void NexusRegistryServer::processRequest(const std::string &request,
         roundToTwoDecimalPlaces(std::stod(root["y"].asString()))};
 
     NodeInfo node = {root["type"].asString(), root["name"].asString(),
-                     root["ip"].asString(), coords, root["port"].asInt()};
+                     root["ip"].asString(),   coords,
+                     root["port"].asInt(),    root["publicKey"].asString()};
     registerNode(node);
     response = R"({"message": "Node registered successfully"})";
   } else if (action == "deregister") {
@@ -84,11 +85,11 @@ void NexusRegistryServer::processRequest(const std::string &request,
   } else if (action == "list") {
     response = getNodeList();
   } else if (action == "update") {
-    NodeInfo node = {root["type"].asString(),
-                     root["name"].asString(),
-                     root["ip"].asString(),
-                     {root["x"].asDouble(), root["y"].asDouble()},
-                     root["port"].asInt()};
+    NodeInfo node = {
+        root["type"].asString(), root["name"].asString(),
+        root["ip"].asString(),   {root["x"].asDouble(), root["y"].asDouble()},
+        root["port"].asInt(),    root["publicKey"].asString()};
+    ;
     updateNode(node);
     response = R"({"message":"Node updated successfully"})";
   } else {
@@ -125,6 +126,7 @@ void NexusRegistryServer::updateNode(const NodeInfo &node) {
       existingNode.ip = node.ip;
       existingNode.coords = node.coords;
       existingNode.port = node.port;
+      existingNode.publicKey = node.publicKey;
       nodeUpdated = true;
       logger.log(LogLevel::INFO, "Updated node: " + node.name + " (" + node.ip +
                                      ":" + std::to_string(node.port) +
@@ -153,6 +155,7 @@ std::string NexusRegistryServer::getNodeList() {
       n["port"] = node.port;
       n["x"] = node.coords.first;
       n["y"] = node.coords.second;
+      n["publicKey"] = node.publicKey;
       root.append(n);
     }
   } catch (const std::exception &e) {

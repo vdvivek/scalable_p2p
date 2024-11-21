@@ -1,6 +1,7 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include "CryptoManager.h"
 #include "NetworkManager.h"
 #include "NodeType.h"
 #include "Packet.hpp"
@@ -19,10 +20,11 @@
 #include <thread>
 #include <unistd.h> // For close()
 
-class Node: public std::enable_shared_from_this<Node> {
+class Node : public std::enable_shared_from_this<Node> {
 public:
-  Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
-       std::pair<double, double> coords, NetworkManager networkManager);
+  Node(NodeType::Type nodeType, std::string name, const std::string &ip,
+       int port, std::pair<double, double> coords,
+       NetworkManager networkManager);
   ~Node();
 
   std::string getId() const;
@@ -39,16 +41,27 @@ public:
   void updatePosition();
 
   void receiveMessage(std::string &message);
-  void sendMessage(const std::string &targetName, const std::string &targetIP, int targetPort,
-                   const std::string &message);
+  void sendMessage(const std::string &targetName, const std::string &targetIP,
+                   int targetPort, const std::string &message);
 
   void sendTo(const std::string &targetIP, int targetPort, Packet &pkt);
 
-  void sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
-                const std::string &fileName);
+  void sendFile(const std::string &targetName, const std::string &targetIP,
+                int targetPort, const std::string &fileName);
 
-  static std::string extractMessage(const std::string &payload, std::string &senderName,
-                             std::string &targetIP, int &targetPort);
+  static std::string extractMessage(const std::string &payload,
+                                    std::string &senderName,
+                                    std::string &targetIP, int &targetPort);
+
+  std::string getPublicKey() const { return cryptoManager->getPublicKey(); }
+
+  std::vector<uint8_t> encryptMessage(const std::string &message) const {
+    return cryptoManager->encrypt(message);
+  }
+
+  std::string decryptMessage(const std::vector<uint8_t> &ciphertext) const {
+    return cryptoManager->decrypt(ciphertext);
+  }
 
 protected:
   NodeType::Type type;
@@ -62,10 +75,12 @@ protected:
   NetworkManager networkManager;
 
   int socket_fd;
-  struct sockaddr_in addr {};
+  struct sockaddr_in addr{};
   double delay; // delay in seconds
 
 private:
+  std::unique_ptr<CryptoManager> cryptoManager;
+
   void simulateSignalDelay();
 
   static std::string generateUUID();

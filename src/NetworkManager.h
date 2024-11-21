@@ -16,10 +16,13 @@ class NetworkManager {
 public:
   explicit NetworkManager(const std::string &registryAddress);
 
-  bool nodeExists(const std::shared_ptr<Node>& node) const;
-  static bool performCurlRequest(const std::string& url, const std::string& payload, std::string& response);
-  static Json::Value createNodePayload(const std::string& action, const std::shared_ptr<Node>& node);
-  std::shared_ptr<Node> parseNodeFromJson(const Json::Value& nodeJson) const;
+  bool nodeExists(const std::shared_ptr<Node> &node) const;
+  static bool performCurlRequest(const std::string &url,
+                                 const std::string &payload,
+                                 std::string &response);
+  static Json::Value createNodePayload(const std::string &action,
+                                       const std::shared_ptr<Node> &node);
+  std::shared_ptr<Node> parseNodeFromJson(const Json::Value &nodeJson) const;
 
   void addNode(const std::shared_ptr<Node> &node);
   void removeNode(const std::string &id);
@@ -28,16 +31,17 @@ public:
   std::vector<std::shared_ptr<Node>> getSatelliteNodes() const;
 
   void fetchNodesFromRegistry();
-  static std::string serializeNode(const std::shared_ptr<Node>& node);
+  static std::string serializeNode(const std::shared_ptr<Node> &node);
   bool registerNodeWithRegistry(const std::shared_ptr<Node> &node);
   void deregisterNodeWithRegistry(const std::shared_ptr<Node> &node);
-  bool sendToRegistryServer(const std::string& endpoint, const std::string& jsonPayload);
-  bool updateNodeInRegistry(const std::shared_ptr<Node>& node);
+  bool sendToRegistryServer(const std::string &endpoint,
+                            const std::string &jsonPayload);
+  bool updateNodeInRegistry(const std::shared_ptr<Node> &node);
 
   void createRoutingTable();
-  void updateRoutingTable(const std::shared_ptr<Node>& src);
+  void updateRoutingTable(const std::shared_ptr<Node> &src);
   void route(int src_idx);
-  std::shared_ptr<Node> getNextHop(const std::string& name);
+  std::shared_ptr<Node> getNextHop(const std::string &name);
 
   std::vector<int> nextHop;
 

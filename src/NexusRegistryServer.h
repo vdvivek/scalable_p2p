@@ -20,6 +20,7 @@ struct NodeInfo {
   std::string ip;
   std::pair<double, double> coords;
   int port;
+  std::string publicKey;
 };
 
 class NexusRegistryServer {
