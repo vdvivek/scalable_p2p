@@ -40,6 +40,7 @@ private:
   void processRequest(const std::string &request, std::string &response);
   void registerNode(const NodeInfo &node);
   void deregisterNode(const std::string &name);
+  void updateNode(const NodeInfo &node);
   std::string getNodeList();
 
   static std::string readFromSocket(int socket);

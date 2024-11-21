@@ -17,7 +17,7 @@ public:
   explicit NetworkManager(const std::string &registryAddress);
 
   bool nodeExists(const std::shared_ptr<Node>& node) const;
-  static bool performCurlRequest(const std::string& url, const std::string& payload);
+  static bool performCurlRequest(const std::string& url, const std::string& payload, std::string& response);
   static Json::Value createNodePayload(const std::string& action, const std::shared_ptr<Node>& node);
   std::shared_ptr<Node> parseNodeFromJson(const Json::Value& nodeJson) const;
 

@@ -17,8 +17,18 @@ bool NetworkManager::nodeExists(const std::shared_ptr<Node>& node) const {
   });
 }
 
+static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
+  size_t totalSize = size * nmemb;
+  if (s) {
+    s->append(static_cast<char*>(contents), totalSize);
+    return totalSize;
+  }
+  return 0;
+}
+
 // Helper: Perform CURL requests
-bool NetworkManager::performCurlRequest(const std::string& url, const std::string& payload) {
+bool NetworkManager::performCurlRequest(const std::string& url, const std::string& payload, std::string& response) {
+  std::cout << "[DEBUG] Performing request to NexusRegistryServer..." << std::endl;
   CURL* curl = curl_easy_init();
   if (!curl) {
     std::cerr << "[ERROR] Failed to initialize CURL" << std::endl;
@@ -26,9 +36,19 @@ bool NetworkManager::performCurlRequest(const std::string& url, const std::strin
   }
 
   struct curl_slist* headers = curl_slist_append(nullptr, "Content-Type: application/json");
+  if (!headers) {
+    std::cerr << "[ERROR] Failed to set CURL headers" << std::endl;
+    curl_easy_cleanup(curl);
+    return false;
+  }
+
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);         // Set timeout
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);  // Set connection timeout
 
   CURLcode res = curl_easy_perform(curl);
   curl_slist_free_all(headers);
@@ -38,8 +58,18 @@ bool NetworkManager::performCurlRequest(const std::string& url, const std::strin
     std::cerr << "[ERROR] CURL request failed: " << curl_easy_strerror(res) << std::endl;
     return false;
   }
+
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  if (httpCode >= 400) {
+    std::cerr << "[ERROR] Server responded with HTTP code: " << httpCode << std::endl;
+    return false;
+  }
+
+  std::cout << "[DEBUG] Response from server: " << response << std::endl;
   return true;
 }
+
 
 void NetworkManager::addNode(const std::shared_ptr<Node>& node) {
   if (nodeExists(node)) {
@@ -95,18 +125,26 @@ std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
 }
 
 bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Registering node at NexusRegistryServer..."  << std::endl;
+
   Json::Value payload = createNodePayload("register", node);
   std::string url = registryAddress + "/register";
-  return performCurlRequest(url, payload.toStyledString());
+  std::string response;
+  return performCurlRequest(url, payload.toStyledString(), response);
 }
 
 void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Deregistering node at NexusRegistryServer..."  << std::endl;
+
   Json::Value payload = createNodePayload("deregister", node);
   std::string url = registryAddress + "/deregister";
-  performCurlRequest(url, payload.toStyledString());
+  std::string response;
+  performCurlRequest(url, payload.toStyledString(), response);
 }
 
 Json::Value NetworkManager::createNodePayload(const std::string& action, const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Create payload for Node"  << std::endl;
+
   Json::Value payload;
   payload["action"] = action;
   payload["type"] = NodeType::toString(node->getType());
@@ -122,19 +160,22 @@ Json::Value NetworkManager::createNodePayload(const std::string& action, const s
 bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node>& node) {
   Json::Value payload = createNodePayload("update", node);
   std::string url = registryAddress + "/update";
-  return performCurlRequest(url, payload.toStyledString());
+  std::string response;
+  return performCurlRequest(url, payload.toStyledString(), response);
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
   Json::Value payload;
   payload["action"] = "list";
   std::string response;
-  performCurlRequest(registryAddress, payload.toStyledString());
+  performCurlRequest(registryAddress, payload.toStyledString(), response);
 
   Json::Value nodeListJson;
   Json::CharReaderBuilder reader;
   std::istringstream responseStream(response);
   std::string errs;
+
+  std::cout << "[DEBUG] Raw response: " << response << std::endl;
 
   if (!Json::parseFromStream(reader, responseStream, &nodeListJson, &errs)) {
     std::cerr << "[ERROR] Failed to parse node list: " << errs << std::endl;

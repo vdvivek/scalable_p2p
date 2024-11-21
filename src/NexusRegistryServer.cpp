@@ -1,3 +1,4 @@
+#include "NodeType.h"
 #include "NexusRegistryServer.h"
 
 NexusRegistryServer::NexusRegistryServer(int port) : port(port), isRunning(false) {}
@@ -78,6 +79,16 @@ void NexusRegistryServer::processRequest(const std::string &request, std::string
     response = R"({"message": "Node deregistered successfully"})";
   } else if (action == "list") {
     response = getNodeList();
+  } else if (action == "update") {
+      NodeInfo node = {
+        root["type"].asString(),
+        root["name"].asString(),
+        root["ip"].asString(),
+        {root["x"].asDouble(), root["y"].asDouble()},
+        root["port"].asInt()
+    };
+    updateNode(node);
+    response = R"({"message":"Node updated successfully"})";
   } else {
     response = R"({"error": "Unknown action"})";
   }
@@ -101,18 +112,47 @@ void NexusRegistryServer::deregisterNode(const std::string &name) {
   std::cout << "[INFO] Deregistered node: " << name << std::endl;
 }
 
+void NexusRegistryServer::updateNode(const NodeInfo &node) {
+  std::lock_guard<std::mutex> lock(nodesMutex);
+  bool nodeUpdated = false;
+
+  for (auto &existingNode : nodes) {
+    if (existingNode.name == node.name) {
+      existingNode.type = node.type;
+      existingNode.ip = node.ip;
+      existingNode.coords = node.coords;
+      existingNode.port = node.port;
+      nodeUpdated = true;
+      std::cout << "[INFO] Updated node: " << node.name << " (" << node.ip << ":" << node.port
+                << ") at [" << node.coords.first << ", " << node.coords.second << "]." << std::endl;
+      break;
+    }
+  }
+
+  if (!nodeUpdated) {
+    std::cerr << "[WARNING] Node not found for update: " << node.name << std::endl;
+  }
+}
+
 std::string NexusRegistryServer::getNodeList() {
   std::lock_guard<std::mutex> lock(nodesMutex);
   Json::Value root;
-  for (const auto &node : nodes) {
-    Json::Value n;
-    n["type"] = node.type;
-    n["name"] = node.name;
-    n["ip"] = node.ip;
-    n["port"] = node.port;
-    n["x"] = node.coords.first;
-    n["y"] = node.coords.second;
-    root.append(n);
+  try {
+    for (const auto &node : nodes) {
+      Json::Value n;
+      n["type"] = node.type;
+      n["name"] = node.name;
+      n["ip"] = node.ip;
+      n["port"] = node.port;
+      n["x"] = node.coords.first;
+      n["y"] = node.coords.second;
+      root.append(n);
+    }
+    std::cout << "[DEBUG] Node list: " << root.toStyledString() << std::endl;
+  }
+  catch (const std::exception &e) {
+    std::cerr << "[ERROR] Exception while building node list: " << e.what() << std::endl;
+    return "{}"; // Return empty JSON object in case of error
   }
   Json::StreamWriterBuilder writer;
   return Json::writeString(writer, root);
@@ -137,6 +177,8 @@ std::string NexusRegistryServer::readFromSocket(int socket) {
 }
 
 void NexusRegistryServer::writeToSocket(int socket, const std::string &response) {
+  std::cout << "[DEBUG] In writeToSocket " << response << std::endl;
+
   std::string httpResponse = "HTTP/1.1 200 OK\r\n"
                              "Content-Type: application/json\r\n"
                              "Content-Length: " +

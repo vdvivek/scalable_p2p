@@ -106,11 +106,11 @@ void handleInput(const std::shared_ptr<Node> &node) {
     } else if (command == "help") {
       printCommands();
     }
-    // Handle unknown commands
     else {
       std::cerr << "[ERROR] Unknown command.\n";
       printCommands();
     }
+    std::cout << std::endl;
   }
 }
 
@@ -193,6 +193,7 @@ int main(int argc, char **argv) {
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
+      std::cout << std::endl << "Refreshing NetworkManager..." << std::endl;
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
@@ -201,12 +202,8 @@ int main(int argc, char **argv) {
 
   handleInput(node);
 
-  if (!networkManager.registerNodeWithRegistry(node)) {
-    std::cerr << "[ERROR] Failed to register node with the registry server." << std::endl;
-    return 5;
-  }
-
   isRunning = false;
+  networkManager.deregisterNodeWithRegistry(node);
 
   if (receiverThread.joinable()) {
     receiverThread.join();
