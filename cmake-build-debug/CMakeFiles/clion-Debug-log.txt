@@ -12,6 +12,7 @@
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
 -- Found CURL: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/lib/libcurl.tbd (found version "8.7.1")
--- Configuring done (0.9s)
+-- Found OpenSSL: /opt/homebrew/Cellar/openssl@3/3.4.0/lib/libcrypto.dylib (found version "3.4.0")
+-- Configuring done (0.7s)
 -- Generating done (0.0s)
 -- Build files have been written to: /Users/prkaaviya/CLionProjects/scalable_p2p/cmake-build-debug

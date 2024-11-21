@@ -27,7 +27,8 @@ struct Packet {
   std::array<uint8_t, MAX_BUFFER_SIZE> data;
 
   Packet();
-  Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort, packetType type);
+  Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort,
+         packetType type);
 
   std::vector<uint8_t> serialize();
   static Packet deserialize(const std::vector<uint8_t> &buffer);
