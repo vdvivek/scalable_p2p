@@ -2,7 +2,7 @@
 #include <arpa/inet.h> // For htonl, ntohl, etc.
 #include <stdexcept>
 
-Packet::Packet() : version{PKT_VERSION} {
+Packet::Packet() : version{PKT_VERSION}, errorCorrectionCode{0} {
   std::fill(data.begin(), data.end(), 0);
 }
 
@@ -13,7 +13,7 @@ Packet::Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort,
   std::fill(data.begin(), data.end(), 0);
 }
 
-std::vector<uint8_t> Packet::serialize() {
+std::vector<uint8_t> Packet::serialize() const {
   std::vector<uint8_t> buffer;
   buffer.reserve(sizeof(Packet));
 
@@ -47,11 +47,15 @@ std::vector<uint8_t> Packet::serialize() {
                 reinterpret_cast<const uint8_t *>(&fragCount) +
                     sizeof(fragCount));
 
-  uint32_t crc = htonl(errorCorrectionCode);
-  buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&crc),
-                reinterpret_cast<const uint8_t *>(&crc) + sizeof(crc));
-
   buffer.insert(buffer.end(), data.begin(), data.end());
+
+  // Compute and append the CRC
+  uint32_t crc = calculateCRC(buffer);
+  uint32_t crcNetworkOrder = htonl(crc);
+  buffer.insert(buffer.end(),
+                reinterpret_cast<const uint8_t *>(&crcNetworkOrder),
+                reinterpret_cast<const uint8_t *>(&crcNetworkOrder) +
+                    sizeof(crcNetworkOrder));
 
   return buffer;
 }
@@ -93,18 +97,23 @@ Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
   packet.fragmentCount = ntohs(packet.fragmentCount);
   offset += sizeof(packet.fragmentCount);
 
+  std::fill(packet.data.begin(), packet.data.end(), 0);
+  std::memcpy(packet.data.data(), &buffer[offset], packet.data.size());
+  offset += packet.data.size();
+
   std::memcpy(&packet.errorCorrectionCode, &buffer[offset],
               sizeof(packet.errorCorrectionCode));
   packet.errorCorrectionCode = ntohl(packet.errorCorrectionCode);
-  offset += sizeof(packet.errorCorrectionCode);
 
-  std::fill(packet.data.begin(), packet.data.end(), 0);
-  std::memcpy(packet.data.data(), &buffer[offset], packet.data.size());
+  // Verify CRC after deserialization
+  if (!packet.verifyCRC()) {
+    throw std::runtime_error("CRC verification failed");
+  }
 
   return packet;
 }
 
-uint32_t Packet::calculateCRC(const std::vector<uint8_t> &data) {
+uint32_t Packet::calculateCRC(const std::vector<uint8_t> &data) const {
   uint32_t crc = 0xFFFFFFFF;
   for (auto byte : data) {
     crc ^= byte;
@@ -117,11 +126,15 @@ uint32_t Packet::calculateCRC(const std::vector<uint8_t> &data) {
 
 void Packet::computeCRC() {
   auto serializedData = serialize();
+  serializedData.resize(serializedData.size() -
+                        sizeof(errorCorrectionCode)); // Exclude the CRC
   errorCorrectionCode = calculateCRC(serializedData);
 }
 
-bool Packet::verifyCRC() {
+bool Packet::verifyCRC() const {
   auto serializedData = serialize();
+  serializedData.resize(serializedData.size() -
+                        sizeof(errorCorrectionCode)); // Exclude the CRC
   uint32_t computedCRC = calculateCRC(serializedData);
   return computedCRC == errorCorrectionCode;
 }

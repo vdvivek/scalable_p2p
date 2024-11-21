@@ -21,3 +21,13 @@
 624	684	1732204679179686383	nexus	732d8577076a4702
 7	551	1732204845144607181	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
 551	653	1732204845688939614	nexus	732d8577076a4702
+9	606	1732206108350151884	CMakeFiles/nexus.dir/src/Logger.cpp.o	898468fdd0379dd0
+10	710	1732206108350542091	CMakeFiles/nexus.dir/src/CryptoManager.cpp.o	4527b1ddff75f295
+6	487	1732206134240942830	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	efd3b875e8f02d7f
+6	489	1732206134241286454	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
+7	512	1732206134241403579	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	2668143e5528ab80
+9	397	1732206197579548718	CMakeFiles/nexus.dir/src/Packet.cpp.o	25e471ce6dcdf662
+7	612	1732206197578078764	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	efd3b875e8f02d7f
+8	613	1732206197578780137	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
+8	637	1732206197578938928	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	2668143e5528ab80
+637	730	1732206198208034271	nexus	732d8577076a4702
