@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(scalable_p2p)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(CURL REQUIRED)
 find_package(jsoncpp REQUIRED)
