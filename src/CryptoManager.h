@@ -14,7 +14,8 @@ public:
 
   std::string getPublicKey() const;
 
-  std::vector<uint8_t> encrypt(const std::string &plaintext, const std::string &recipientPublicKey) const;
+  std::vector<uint8_t> encrypt(const std::string &plaintext,
+                               const std::string &recipientPublicKey) const;
   std::string decrypt(const std::vector<uint8_t> &ciphertext) const;
 
 private:

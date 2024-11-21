@@ -55,7 +55,9 @@ public:
 
   std::string getPublicKey() const { return cryptoManager->getPublicKey(); }
 
-  std::vector<uint8_t> encryptMessage(const std::string &message, const std::string &recipientPublicKey) const {
+  std::vector<uint8_t>
+  encryptMessage(const std::string &message,
+                 const std::string &recipientPublicKey) const {
     return cryptoManager->encrypt(message, recipientPublicKey);
   }
 
