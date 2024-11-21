@@ -1,10 +1,12 @@
 #include "Node.h"
+
+#include <utility>
 #include "Utility.h"
 
 Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
-           std::pair<double, double> coords, NetworkManager &networkManager)
+           std::pair<double, double> coords, NetworkManager networkManager)
     : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip), port(port),
-      coords(std::move(coords)), networkManager(networkManager) {
+      coords(std::move(coords)), networkManager(std::move(networkManager)) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;

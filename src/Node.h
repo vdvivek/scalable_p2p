@@ -22,7 +22,7 @@
 class Node: public std::enable_shared_from_this<Node> {
 public:
   Node(NodeType::Type nodeType, std::string name, const std::string &ip, int port,
-       std::pair<double, double> coords, NetworkManager &networkManager);
+       std::pair<double, double> coords, NetworkManager networkManager);
   ~Node();
 
   std::string getId() const;
@@ -59,7 +59,7 @@ protected:
   int port;
   std::pair<double, double> coords; // Coordinates (x, y)
 
-  NetworkManager &networkManager;
+  NetworkManager networkManager;
 
   int socket_fd;
   struct sockaddr_in addr {};
