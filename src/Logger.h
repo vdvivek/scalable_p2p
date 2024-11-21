@@ -6,8 +6,6 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <memory>
-#include <ctime>
 
 enum class LogLevel {
     DEBUG,
@@ -18,11 +16,11 @@ enum class LogLevel {
 
 class Logger {
 public:
-    Logger(const Logger&) = delete;
-    Logger& operator=(const Logger&) = delete;
+    Logger(const Logger&) = delete;            // Delete copy constructor
+    Logger& operator=(const Logger&) = delete; // Delete copy assignment operator
 
     static Logger& getInstance() {
-        static Logger instance;
+        static Logger instance; // Singleton instance
         return instance;
     }
 
@@ -41,12 +39,10 @@ public:
         std::lock_guard<std::mutex> lock(mutex);
         std::string logMessage = " [" + logLevelToString(level) + "] " + message;
 
-        // Log to file if enabled
         if (logFile.is_open()) {
             logFile << logMessage << std::endl;
         }
 
-        // Log to console
         std::cout << logMessage << std::endl;
     }
 
@@ -56,7 +52,7 @@ public:
     }
 
 private:
-    Logger() : minLogLevel(LogLevel::DEBUG) {}
+    Logger() = default; // Private constructor for singleton
 
     ~Logger() {
         if (logFile.is_open()) {
@@ -78,5 +74,8 @@ private:
         return levelToString.at(level);
     }
 };
+
+// Declare a global reference to the logger
+extern Logger& logger;
 
 #endif // LOGGER_H

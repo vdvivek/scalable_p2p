@@ -15,13 +15,13 @@ link_directories(/opt/homebrew/Cellar/jsoncpp/1.9.6/lib)
 set(SHARED_SOURCES
         src/Node.cpp
         src/NetworkManager.cpp
+        src/Logger.cpp
 )
 
 set(NEXUS_SRC
         src/Packet.cpp
         src/Utility.cpp
         src/NodeType.h
-        src/Logger.h
 )
 
 set(REGISTRY_SRC

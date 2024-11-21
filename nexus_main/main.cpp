@@ -5,9 +5,10 @@
 
 #include <cstring>
 
-#include "../src/NetworkManager.h"
 #include "../src/Node.h"
+#include "../src/Logger.h"
 #include "../src/NodeType.h"
+#include "../src/NetworkManager.h"
 
 const int UPDATE_INTERVAL = 3;
 
@@ -34,7 +35,7 @@ void receiverFunction(const std::shared_ptr<Node> &node) {
     std::string receivedMessage;
     node->receiveMessage(receivedMessage);
     if (!receivedMessage.empty()) {
-      std::cout << "[MESSAGE RECEIVED]" << std::endl;
+      logger.log(LogLevel::INFO, "Message received.");
       // Reprint the prompt after receiving a message
       std::cout << node->getName() << " prompt: " << std::flush;
     }
@@ -71,7 +72,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
             node->getName() + " " + targetIP + " " + std::to_string(targetPort) + " " + message;
         node->sendMessage(targetName, targetIP, targetPort, fullMessage);
       } else {
-        std::cerr << "[ERROR] Message cannot be empty." << std::endl;
+        logger.log(LogLevel::ERROR, "Message cannot be empty.");
       }
     } else if (command == "file") {
       std::cout << "Enter target node name: ";
@@ -90,24 +91,24 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::cin >> message;
 
       if (message.empty()) {
-        std::cerr << "[ERROR] File name cannot be empty." << std::endl;
+        logger.log(LogLevel::ERROR, "File name cannot be empty.");
         continue;
       }
 
       node->sendFile(targetName, targetIP, targetPort, message);
     } else if (command == "list") {
-      networkManager.listNodes(); // Call listNodes to print node details
+      networkManager.listNodes();
     }
     // Handle "q" for quitting
     else if (command == "q") {
-      std::cout << "[INFO] Goodbye..." << std::endl;
+      logger.log(LogLevel::INFO, "Exiting Nexus ...");
       isRunning = false; // Signal shutdown
       break;
     } else if (command == "help") {
       printCommands();
     }
     else {
-      std::cerr << "[ERROR] Unknown command.\n";
+      logger.log(LogLevel::ERROR, "Unknown command.");
       printCommands();
     }
     std::cout << std::endl;
@@ -146,11 +147,10 @@ int main(int argc, char **argv) {
   }
 
   NodeType::Type nodeTypeEnum = NodeType::fromString(nodeType);
-  std::cout << nodeType << std::endl;
+  logger.log(LogLevel::INFO, "NODE: " + nodeType);
 
   if (nodeTypeEnum != NodeType::GROUND && nodeTypeEnum != NodeType::SATELLITE) {
-    std::cerr << "[ERROR] Invalid node type. Must be 'ground' or 'satellite'." << std::endl;
-    printUsage();
+    logger.log(LogLevel::ERROR, "Invalid node type. Must be 'ground' or 'satellite'.");    printUsage();
     return 3;
   }
 
@@ -158,10 +158,11 @@ int main(int argc, char **argv) {
   std::thread positionUpdateThread;
 
   if (nodeTypeEnum == NodeType::GROUND) {
+    logger.log(LogLevel::INFO, "Creating a Ground Node ...");
     node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
-    std::cout << "[INFO] Creating a GroundNode..." << std::endl;
     node->updatePosition();
   } else {
+    logger.log(LogLevel::INFO, "Creating a Satellite Node ...");
     auto satelliteNode =
         std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node = satelliteNode;
@@ -173,27 +174,26 @@ int main(int argc, char **argv) {
         std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL)); // Update position every 2 second
       }
     });
-
-    std::cout << "[INFO] Creating a SatelliteNode..." << std::endl;
   }
 
   networkManager.registerNodeWithRegistry(node);
 
   if (!node->bind()) {
-    std::cerr << "[ERROR] Failed to bind the node. Exiting." << std::endl;
+    logger.log(LogLevel::ERROR, "Failed to bind the node. Exiting.");
     return 4;
   }
 
-  std::cout << "[NEXUS] " << node->getName() << " is ready for UDP communication at "
-            << node->getIP() << ":" << node->getPort() << "" << std::endl;
-  std::cout << "[NEXUS] Node is running. Press Ctrl+C OR q to terminate." << std::endl;
+  logger.log(LogLevel::INFO, "Node is ready for UDP communication at " +
+                                   node->getIP() + ":" + std::to_string(node->getPort()));
+  logger.log(LogLevel::INFO, "Node is running. Press q to terminate.");
 
   std::thread receiverThread(receiverFunction, node);
 
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
-      std::cout << std::endl << "Refreshing NetworkManager..." << std::endl;
+      logger.log(LogLevel::INFO, "Refreshing local network manager every " +
+        std::to_string(UPDATE_INTERVAL) + " seconds ...");
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));

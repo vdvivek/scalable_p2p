@@ -8,8 +8,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  Logger::getInstance().setLogLevel(LogLevel::INFO);
-  Logger::getInstance().log(LogLevel::INFO, "Starting Nexus Registry Server...");
+  logger.setLogLevel(LogLevel::INFO);
+  logger.log(LogLevel::INFO, "Starting Nexus Registry Server...");
 
   NexusRegistryServer server(std::stoi(argv[1])); // Port for the registry server
   server.start();
