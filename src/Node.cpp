@@ -28,13 +28,13 @@ bool Node::bind() {
   // Create a UDP socket
   socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (socket_fd < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to create socket for Node " + name + ": " + strerror(errno));
+    logger.log(LogLevel::ERROR, "Failed to create socket for Node " + name + ": " + strerror(errno));
     return false;
   }
 
   // Bind the socket to the IP and Port
   if (::bind(socket_fd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to bind socket for Node " + name + ": " + strerror(errno));
+    logger.log(LogLevel::ERROR, "Failed to bind socket for Node " + name + ": " + strerror(errno));
     close(socket_fd);
     socket_fd = -1;
     return false;
@@ -62,7 +62,7 @@ void Node::updatePosition() {
 
 void Node::receiveMessage(std::string &message) {
   if (socket_fd < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Socket is not initialized for receiving messages.");
+    logger.log(LogLevel::ERROR, "Socket is not initialized for receiving messages.");
     return;
   }
 
@@ -78,7 +78,7 @@ void Node::receiveMessage(std::string &message) {
                reinterpret_cast<struct sockaddr *>(&senderAddr), &senderAddrLen);
 
   if (bytesReceived < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to receive message: " + std::string(strerror(errno)));
+    logger.log(LogLevel::ERROR, "Failed to receive message: " + std::string(strerror(errno)));
     return;
   }
 
@@ -124,7 +124,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
     ip + ":" + std::to_string(port));
 
   if (socket_fd < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Invalid socket descriptor. "
+    logger.log(LogLevel::ERROR, "Invalid socket descriptor. "
                                 "Did you forget to bind the socket?");
     return;
   }
@@ -133,7 +133,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   targetAddr.sin_family = AF_INET;
   targetAddr.sin_port = htons(targetPort);
   if (inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr) <= 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Invalid target IP address: " + targetIP);
+    logger.log(LogLevel::ERROR, "Invalid target IP address: " + targetIP);
     return;
   }
 
@@ -144,13 +144,13 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   logger.log(LogLevel::INFO, "[NEXUS] Packet size: " + std::to_string(packet_data.size()));
 
   if (packet_data.empty()) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to serialize packet. No data to send.");
+    logger.log(LogLevel::ERROR, "Failed to serialize packet. No data to send.");
     return;
   }
 
   auto nextHop = networkManager.getNextHop(targetName);
   if (!nextHop) {
-    logger.log(LogLevel::ERROR, "[NEXUS] No next hop found for target: " + targetName);
+    logger.log(LogLevel::ERROR, "No next hop found for target: " + targetName);
   }
   // for (auto n : networkManager.nextHop) {
   //   std::cout << n << " ";
@@ -162,7 +162,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
   nextAddr.sin_family = AF_INET;
   nextAddr.sin_port = htons(nextHop->getPort());
   if (inet_pton(AF_INET, nextHop->getIP().c_str(), &nextAddr.sin_addr) <= 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Invalid next hop IP address: " + nextHop->getIP());
+    logger.log(LogLevel::ERROR, "Invalid next hop IP address: " + nextHop->getIP());
     return;
   }
 
@@ -170,7 +170,7 @@ void Node::sendMessage(const std::string &targetName, const std::string &targetI
                                reinterpret_cast<struct sockaddr *>(&nextAddr), sizeof(nextAddr));
 
   if (bytesSent < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to send message:  " +
+    logger.log(LogLevel::ERROR, "Failed to send message:  " +
       std::string(strerror(errno)));
   } else {
     logger.log(LogLevel::INFO, "[NEXUS] Sent message to " +
@@ -192,7 +192,7 @@ void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
              reinterpret_cast<struct sockaddr *>(&targetAddr), sizeof(targetAddr));
 
   if (bytesSent < 0) {
-    logger.log(LogLevel::ERROR, "[NEXUS] Failed to send data: " +
+    logger.log(LogLevel::ERROR, "Failed to send data: " +
       std::string(strerror(errno)));
   } else {
     logger.log(LogLevel::INFO, "[NEXUS] Sent " + std::to_string(bytesSent) +
@@ -255,7 +255,7 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
     try {
       targetPort = std::stoi(portStr); // Convert port to integer
     } catch (const std::exception &e) {
-      logger.log(LogLevel::ERROR, "[NEXUS] Invalid port in message payload: " + portStr);
+      logger.log(LogLevel::ERROR, "Invalid port in message payload: " + portStr);
       return "";
     }
 
@@ -263,7 +263,7 @@ std::string Node::extractMessage(const std::string &payload, std::string &sender
     std::getline(iss, actualMessage);
     actualMessage.erase(0, actualMessage.find_first_not_of(" ")); // Trim leading spaces
   } else {
-    logger.log(LogLevel::ERROR, "[NEXUS] Malformed message payload: " + payload);
+    logger.log(LogLevel::ERROR, "Malformed message payload: " + payload);
   }
 
   return actualMessage;

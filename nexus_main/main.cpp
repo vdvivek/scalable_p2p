@@ -35,7 +35,7 @@ void receiverFunction(const std::shared_ptr<Node> &node) {
     std::string receivedMessage;
     node->receiveMessage(receivedMessage);
     if (!receivedMessage.empty()) {
-      logger.log(LogLevel::INFO, "Message received.");
+      logger.log(LogLevel::INFO, "[NEXUS] Message received.");
       // Reprint the prompt after receiving a message
       std::cout << node->getName() << " prompt: " << std::flush;
     }
@@ -101,7 +101,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
     }
     // Handle "q" for quitting
     else if (command == "q") {
-      logger.log(LogLevel::INFO, "Exiting Nexus ...");
+      logger.log(LogLevel::INFO, "[NEXUS] Exiting ...");
       isRunning = false; // Signal shutdown
       break;
     } else if (command == "help") {
@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
   }
 
   NodeType::Type nodeTypeEnum = NodeType::fromString(nodeType);
-  logger.log(LogLevel::INFO, "NODE: " + nodeType);
+  logger.log(LogLevel::INFO, "[NEXUS] NODE: " + nodeType);
 
   if (nodeTypeEnum != NodeType::GROUND && nodeTypeEnum != NodeType::SATELLITE) {
     logger.log(LogLevel::ERROR, "Invalid node type. Must be 'ground' or 'satellite'.");    printUsage();
@@ -158,11 +158,11 @@ int main(int argc, char **argv) {
   std::thread positionUpdateThread;
 
   if (nodeTypeEnum == NodeType::GROUND) {
-    logger.log(LogLevel::INFO, "Creating a Ground Node ...");
+    logger.log(LogLevel::INFO, "[NEXUS] Creating a Ground Node ...");
     node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node->updatePosition();
   } else {
-    logger.log(LogLevel::INFO, "Creating a Satellite Node ...");
+    logger.log(LogLevel::INFO, "[NEXUS] Creating a Satellite Node ...");
     auto satelliteNode =
         std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node = satelliteNode;
@@ -183,16 +183,16 @@ int main(int argc, char **argv) {
     return 4;
   }
 
-  logger.log(LogLevel::INFO, "Node is ready for UDP communication at " +
+  logger.log(LogLevel::INFO, "[NEXUS] Node is ready for UDP communication at " +
                                    node->getIP() + ":" + std::to_string(node->getPort()));
-  logger.log(LogLevel::INFO, "Node is running. Press q to terminate.");
+  logger.log(LogLevel::INFO, "[NEXUS] Node is running. Press q to terminate.");
 
   std::thread receiverThread(receiverFunction, node);
 
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
-      logger.log(LogLevel::INFO, "Refreshing local network manager every " +
+      logger.log(LogLevel::INFO, "[NEXUS] Refreshing local network manager every " +
         std::to_string(UPDATE_INTERVAL) + " seconds ...");
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
