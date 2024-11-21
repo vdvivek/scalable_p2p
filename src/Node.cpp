@@ -10,6 +10,7 @@ Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip, int
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
+  delay = 0;
 }
 
 std::string Node::getId() const { return id; }

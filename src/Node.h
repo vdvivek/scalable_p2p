@@ -47,7 +47,7 @@ public:
   void sendFile(const std::string &targetName, const std::string &targetIP, int targetPort,
                 const std::string &fileName);
 
-  std::string extractMessage(const std::string &payload, std::string &senderName,
+  static std::string extractMessage(const std::string &payload, std::string &senderName,
                              std::string &targetIP, int &targetPort);
 
 protected:
@@ -66,11 +66,12 @@ protected:
   double delay; // delay in seconds
 
 private:
-  static std::string generateUUID();
   void simulateSignalDelay();
-  void processMessage(Packet &pkt);
-  void writeToFile(Packet &pkt);
-  void reassembleFile(Packet &pkt);
+
+  static std::string generateUUID();
+  static void processMessage(Packet &pkt);
+  static void writeToFile(Packet &pkt);
+  static void reassembleFile(Packet &pkt);
 };
 
 #endif
