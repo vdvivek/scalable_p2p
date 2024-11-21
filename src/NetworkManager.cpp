@@ -1,30 +1,86 @@
-#include "NetworkManager.h"
 #include <curl/curl.h> // Requires libcurl
 #include <iostream>
 #include <json/json.h>
 
-#include "GroundNode.h"
 #include "Node.h"
-#include "SatelliteNode.h"
+#include "NetworkManager.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
-void NetworkManager::addNode(const std::shared_ptr<Node> &node) {
-  // std::cout << "[DEBUG4] In addNode" << std::endl;
-  // Check if the node already exists in the list, return if it does
-  for (const auto &existingNode : nodes) {
-    // std::cout << "[DEBUG5] In for loop with " << existingNode->getName() << std::endl;
-    if (existingNode->getName() == node->getName() && existingNode->getIP() == node->getIP() &&
-        existingNode->getPort() == node->getPort()) {
+// Helper: Check if a node exists in the list
+bool NetworkManager::nodeExists(const std::shared_ptr<Node>& node) const {
+  return std::any_of(nodes.begin(), nodes.end(), [&](const std::shared_ptr<Node>& existingNode) {
+    return existingNode->getName() == node->getName() &&
+           existingNode->getIP() == node->getIP() &&
+           existingNode->getPort() == node->getPort();
+  });
+}
 
-      //  TODO: Check logic
-      existingNode->setCoords(node->getCoords());
-      return;
+static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
+  size_t totalSize = size * nmemb;
+  if (s) {
+    s->append(static_cast<char*>(contents), totalSize);
+    return totalSize;
+  }
+  return 0;
+}
+
+// Helper: Perform CURL requests
+bool NetworkManager::performCurlRequest(const std::string& url, const std::string& payload, std::string& response) {
+  std::cout << "[DEBUG] Performing request to NexusRegistryServer..." << std::endl;
+  CURL* curl = curl_easy_init();
+  if (!curl) {
+    std::cerr << "[ERROR] Failed to initialize CURL" << std::endl;
+    return false;
+  }
+
+  struct curl_slist* headers = curl_slist_append(nullptr, "Content-Type: application/json");
+  if (!headers) {
+    std::cerr << "[ERROR] Failed to set CURL headers" << std::endl;
+    curl_easy_cleanup(curl);
+    return false;
+  }
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);         // Set timeout
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);  // Set connection timeout
+
+  CURLcode res = curl_easy_perform(curl);
+  curl_slist_free_all(headers);
+  curl_easy_cleanup(curl);
+
+  if (res != CURLE_OK) {
+    std::cerr << "[ERROR] CURL request failed: " << curl_easy_strerror(res) << std::endl;
+    return false;
+  }
+
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+  if (httpCode >= 400) {
+    std::cerr << "[ERROR] Server responded with HTTP code: " << httpCode << std::endl;
+    return false;
+  }
+
+  std::cout << "[DEBUG] Response from server: " << response << std::endl;
+  return true;
+}
+
+
+void NetworkManager::addNode(const std::shared_ptr<Node>& node) {
+  if (nodeExists(node)) {
+    for (auto& existingNode : nodes) {
+      if (existingNode->getName() == node->getName()) {
+        existingNode->setCoords(node->getCoords());
+        return;
+      }
     }
   }
 
-  // Add the node to the list if not present
   nodes.push_back(node);
   std::cout << "[INFO] Added node: " << node->getName() << " (" << node->getId() << ") at "
             << node->getIP() << ":" << node->getPort() << " to the network." << std::endl;
@@ -43,88 +99,54 @@ void NetworkManager::removeNode(const std::string &id) {
   }
 }
 
-std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
-  std::vector<std::shared_ptr<Node>> satellites;
-
-  for (const auto &node : nodes) {
-    std::cout << "[DEBUG6] Found node in getSatelliteNodes: " << node->getName() << std::endl;
-    if (node->getType() == NodeType::SATELLITE) {
-      std::cout << "[DEBUG3] Found satellite: " << node->getName() << std::endl;
-      satellites.push_back(node);
-    }
-  }
-  return satellites;
-}
-
 void NetworkManager::listNodes() const {
-  // Fetch nodes from the registry
-  const_cast<NetworkManager *>(this)->fetchNodesFromRegistry();
-
   if (nodes.empty()) {
     std::cout << "[INFO] No nodes are currently registered in the network." << std::endl;
     return;
   }
 
   std::cout << "[INFO] Current nodes in the network:" << std::endl;
-  for (const auto &node : nodes) {
-    if (node) {
-      auto coords = node->getCoords();
-      std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " ("
-                << node->getId() << ") at " << node->getIP() << ":" << node->getPort() << " ["
-                << coords.first << ", " << coords.second << "]" << std::endl;
-    } else {
-      std::cerr << "[WARNING] Encountered a null node entry in the network." << std::endl;
+  for (const std::shared_ptr<Node>& node : nodes) {
+    auto coords = node->getCoords();
+    std::cout << NodeType::toString(node->getType()) << " " << node->getName() << " ("
+              << node->getId() << ") at " << node->getIP() << ":" << node->getPort() << " ["
+              << coords.first << ", " << coords.second << "]" << std::endl;
+  }
+}
+
+std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
+  std::vector<std::shared_ptr<Node>> satellites;
+  for (const std::shared_ptr<Node>& node : nodes) {
+    if (node->getType() == NodeType::SATELLITE) {
+      satellites.push_back(node);
     }
   }
+  return satellites;
 }
 
-bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node> &node) {
-  CURL *curl = curl_easy_init();
-  if (!curl) {
-    std::cerr << "[ERROR] Failed to initialize CURL for node registration." << std::endl;
-    return false;
-  }
-  std::cout << "[DEBUG] Registry server is present at " << registryAddress << std::endl;
+bool NetworkManager::registerNodeWithRegistry(const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Registering node at NexusRegistryServer..."  << std::endl;
+
+  Json::Value payload = createNodePayload("register", node);
   std::string url = registryAddress + "/register";
-  Json::Value payload;
-  payload["action"] = "register";
-  payload["type"] = NodeType::toString(node->getType());
-  payload["name"] = node->getName();
-  payload["ip"] = node->getIP();
-  payload["port"] = node->getPort();
-  auto coords = node->getCoords();
-  payload["x"] = coords.first;
-  payload["y"] = coords.second;
-  std::string payloadStr = payload.toStyledString();
-
-  struct curl_slist *headers = nullptr;
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-  CURLcode res = curl_easy_perform(curl);
-  if (res != CURLE_OK) {
-    return false;
-  }
-
-  curl_easy_cleanup(curl);
-  curl_slist_free_all(headers);
-
-  return true;
+  std::string response;
+  return performCurlRequest(url, payload.toStyledString(), response);
 }
 
-void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node> &node) {
-  CURL *curl = curl_easy_init();
-  if (!curl) {
-    std::cerr << "[ERROR] Failed to initialize CURL for node deregistration." << std::endl;
-    return;
-  }
+void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Deregistering node at NexusRegistryServer..."  << std::endl;
 
+  Json::Value payload = createNodePayload("deregister", node);
   std::string url = registryAddress + "/deregister";
+  std::string response;
+  performCurlRequest(url, payload.toStyledString(), response);
+}
+
+Json::Value NetworkManager::createNodePayload(const std::string& action, const std::shared_ptr<Node>& node) {
+  std::cout << "[DEBUG] Create payload for Node"  << std::endl;
+
   Json::Value payload;
-  payload["action"] = "deregister";
+  payload["action"] = action;
   payload["type"] = NodeType::toString(node->getType());
   payload["name"] = node->getName();
   payload["ip"] = node->getIP();
@@ -132,88 +154,28 @@ void NetworkManager::deregisterNodeWithRegistry(const std::shared_ptr<Node> &nod
   auto coords = node->getCoords();
   payload["x"] = coords.first;
   payload["y"] = coords.second;
-  std::string payloadStr = payload.toStyledString();
-
-  struct curl_slist *headers = nullptr;
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-  CURLcode res = curl_easy_perform(curl);
-  if (res != CURLE_OK) {
-    std::cerr << "[ERROR] Failed to deregister node: " << curl_easy_strerror(res) << std::endl;
-  }
-
-  curl_easy_cleanup(curl);
-  curl_slist_free_all(headers);
+  return payload;
 }
 
-static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *s) {
-  size_t totalSize = size * nmemb;
-  if (s) {
-    s->append(static_cast<char *>(contents), totalSize);
-    return totalSize;
-  }
-  std::cerr << "[ERROR] Response string is null." << std::endl;
-  return 0;
+bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node>& node) {
+  Json::Value payload = createNodePayload("update", node);
+  std::string url = registryAddress + "/update";
+  std::string response;
+  return performCurlRequest(url, payload.toStyledString(), response);
 }
 
 void NetworkManager::fetchNodesFromRegistry() {
-  // std::cout << "[DEBUG5] fetchNodesFromRegistry " << std::endl;
-
-  CURL *curl = curl_easy_init();
-  if (!curl) {
-    std::cerr << "[ERROR] Failed to initialize CURL for fetching nodes." << std::endl;
-    return;
-  }
-
-  std::string url = registryAddress;
-  std::string response;
-
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
   Json::Value payload;
   payload["action"] = "list";
-  std::string payloadStr = payload.toStyledString();
+  std::string response;
+  performCurlRequest(registryAddress, payload.toStyledString(), response);
 
-  struct curl_slist *headers = NULL;
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-  headers = curl_slist_append(headers, "charsets: utf-8");
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payloadStr.c_str());
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // Enable verbose logging for CURL
-
-  // Perform the request
-  CURLcode res = curl_easy_perform(curl);
-
-  if (response.empty()) {
-    std::cerr << "[ERROR] Received empty response from registry." << std::endl;
-    curl_easy_cleanup(curl);
-    return;
-  }
-
-  if (res != CURLE_OK) {
-    std::cerr << "[ERROR] Failed to fetch node list: " << curl_easy_strerror(res) << std::endl;
-    curl_easy_cleanup(curl);
-    return;
-  }
-
-  curl_easy_cleanup(curl);
-  curl_slist_free_all(headers);
-
-  // Parse the JSON response
   Json::Value nodeListJson;
   Json::CharReaderBuilder reader;
-  std::string errs;
   std::istringstream responseStream(response);
+  std::string errs;
+
+  std::cout << "[DEBUG] Raw response: " << response << std::endl;
 
   if (!Json::parseFromStream(reader, responseStream, &nodeListJson, &errs)) {
     std::cerr << "[ERROR] Failed to parse node list: " << errs << std::endl;
@@ -225,48 +187,29 @@ void NetworkManager::fetchNodesFromRegistry() {
     return;
   }
 
-  // Process each node in the response
-  for (const auto &nodeJson : nodeListJson) {
-    if (!nodeJson.isObject() || !nodeJson.isMember("name") || !nodeJson.isMember("ip") ||
-        !nodeJson.isMember("port")) {
-      std::cerr << "[ERROR] Malformed node entry in response: " << nodeJson << std::endl;
+  for (const auto& nodeJson : nodeListJson) {
+    if (!nodeJson.isObject()) {
+      std::cerr << "[ERROR] Malformed node entry in response." << std::endl;
       continue;
     }
 
-    if (!nodeListJson.isArray()) {
-      std::cerr << "[ERROR] Unexpected response format: Expected an array." << std::endl;
-      return;
-    }
-
-    // Process each node in the response
-    for (const auto &nodeJson : nodeListJson) {
-      if (!nodeJson.isObject() || !nodeJson.isMember("name") || !nodeJson.isMember("ip") ||
-          !nodeJson.isMember("port")) {
-        std::cerr << "[ERROR] Malformed node entry in response: " << nodeJson << std::endl;
-        continue;
-      }
-
-      double x = nodeJson.isMember("x") ? nodeJson["x"].asDouble() : 0.0;
-      double y = nodeJson.isMember("y") ? nodeJson["y"].asDouble() : 0.0;
-      NodeType::Type nodeTypeEnum = NodeType::fromString(nodeJson["type"].asString());
-
-      std::shared_ptr<Node> node;
-      if (nodeTypeEnum == NodeType::GROUND) {
-        node = std::make_shared<GroundNode>(nodeTypeEnum, nodeJson["name"].asString(),
-                                            nodeJson["ip"].asString(), nodeJson["port"].asInt(),
-                                            std::make_pair(x, y), *this);
-      } else if (nodeTypeEnum == NodeType::SATELLITE) {
-        node = std::make_shared<SatelliteNode>(nodeTypeEnum, nodeJson["name"].asString(),
-                                               nodeJson["ip"].asString(), nodeJson["port"].asInt(),
-                                               std::make_pair(x, y), *this);
-      } else {
-        std::cerr << "[ERROR] Unknown NodeType: " << nodeTypeEnum << std::endl;
-        return; // Or handle the error as appropriate
-      }
-
-      addNode(node);
-    }
+    auto node = parseNodeFromJson(nodeJson);
+    if (node) addNode(node);
   }
+}
+
+std::shared_ptr<Node> NetworkManager::parseNodeFromJson(const Json::Value& nodeJson) const {
+  if (!nodeJson.isMember("name") || !nodeJson.isMember("ip") || !nodeJson.isMember("port")) {
+    std::cerr << "[ERROR] Missing required fields in node JSON." << std::endl;
+    return nullptr;
+  }
+
+  double x = nodeJson.get("x", 0.0).asDouble();
+  double y = nodeJson.get("y", 0.0).asDouble();
+  NodeType::Type type = NodeType::fromString(nodeJson["type"].asString());
+
+  return std::make_shared<Node>(type, nodeJson["name"].asString(), nodeJson["ip"].asString(),
+                                nodeJson["port"].asInt(), std::make_pair(x, y), *this);
 }
 
 void NetworkManager::createRoutingTable() {

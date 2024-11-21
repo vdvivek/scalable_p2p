@@ -3,13 +3,11 @@
 #include <iostream>
 #include <thread>
 
-#include <string.h>
+#include <cstring>
 
-#include "../src/GroundNode.h"
 #include "../src/NetworkManager.h"
-#include "../src/Node.h" // Any issue here?
+#include "../src/Node.h"
 #include "../src/NodeType.h"
-#include "../src/SatelliteNode.h"
 
 const int UPDATE_INTERVAL = 30;
 
@@ -108,11 +106,11 @@ void handleInput(const std::shared_ptr<Node> &node) {
     } else if (command == "help") {
       printCommands();
     }
-    // Handle unknown commands
     else {
       std::cerr << "[ERROR] Unknown command.\n";
       printCommands();
     }
+    std::cout << std::endl;
   }
 }
 
@@ -160,12 +158,12 @@ int main(int argc, char **argv) {
   std::thread positionUpdateThread;
 
   if (nodeTypeEnum == NodeType::GROUND) {
-    node = std::make_shared<GroundNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
+    node = std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     std::cout << "[INFO] Creating a GroundNode..." << std::endl;
     node->updatePosition();
   } else {
     auto satelliteNode =
-        std::make_shared<SatelliteNode>(nodeTypeEnum, name, ip, port, coords, networkManager);
+        std::make_shared<Node>(nodeTypeEnum, name, ip, port, coords, networkManager);
     node = satelliteNode;
 
     // Create a thread to update position periodically
@@ -195,6 +193,7 @@ int main(int argc, char **argv) {
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
+      std::cout << std::endl << "Refreshing NetworkManager..." << std::endl;
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
@@ -203,12 +202,8 @@ int main(int argc, char **argv) {
 
   handleInput(node);
 
-  if (!networkManager.registerNodeWithRegistry(node)) {
-    std::cerr << "[ERROR] Failed to register node with the registry server." << std::endl;
-    return 5;
-  }
-
   isRunning = false;
+  networkManager.deregisterNodeWithRegistry(node);
 
   if (receiverThread.joinable()) {
     receiverThread.join();

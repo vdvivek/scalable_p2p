@@ -28,7 +28,7 @@ endif
 LIBS = -lcurl -ljsoncpp -lz
 
 # Source files
-NEXUS_SOURCES = nexus_main/main.cpp src/Node.cpp src/NetworkManager.cpp src/GroundNode.cpp src/SatelliteNode.cpp src/Packet.cpp src/Utility.cpp
+NEXUS_SOURCES = nexus_main/main.cpp src/Node.cpp src/NetworkManager.cpp src/Packet.cpp src/Utility.cpp
 REGISTRY_SOURCES = registry_main/main.cpp src/NexusRegistryServer.cpp src/Utility.cpp
 
 # Targets
