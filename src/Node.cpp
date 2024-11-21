@@ -1,5 +1,7 @@
-#include "Node.h"
+#include <memory>
+
 #include "Logger.h"
+#include "Node.h"
 #include "Utility.h"
 
 Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip,
@@ -7,7 +9,8 @@ Node::Node(NodeType::Type nodeType, std::string name, const std::string &ip,
            NetworkManager networkManager)
     : type(nodeType), id(generateUUID()), name(std::move(name)), ip(ip),
       port(port), coords(std::move(coords)),
-      networkManager(std::move(networkManager)) {
+      networkManager(std::move(networkManager)),
+      cryptoManager(std::unique_ptr<CryptoManager>(new CryptoManager())) {
   socket_fd = -1;
   std::memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;

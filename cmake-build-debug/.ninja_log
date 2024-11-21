@@ -10,3 +10,14 @@
 410	903	1732203021281059335	CMakeFiles/registry_server.dir/registry_main/main.cpp.o	964fd8469b2d7056
 674	937	1732203021545421390	CMakeFiles/registry_server.dir/src/Utility.cpp.o	805ee0429a849914
 484	1023	1732203021355516717	CMakeFiles/registry_server.dir/src/NexusRegistryServer.cpp.o	9a0b5e508a2af6d9
+9	772	1732203914260490083	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	efd3b875e8f02d7f
+10	786	1732203914261346502	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	2668143e5528ab80
+6	444	1732203929886527530	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
+444	558	1732203930324092959	nexus	732d8577076a4702
+11	379	1732204678566316362	CMakeFiles/nexus.dir/src/CryptoManager.cpp.o	4527b1ddff75f295
+10	574	1732204678565731073	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
+9	583	1732204678564801868	CMakeFiles/nexus.dir/nexus_main/main.cpp.o	efd3b875e8f02d7f
+11	624	1732204678566735777	CMakeFiles/nexus.dir/src/NetworkManager.cpp.o	2668143e5528ab80
+624	684	1732204679179686383	nexus	732d8577076a4702
+7	551	1732204845144607181	CMakeFiles/nexus.dir/src/Node.cpp.o	cd0613e4e2efa66c
+551	653	1732204845688939614	nexus	732d8577076a4702

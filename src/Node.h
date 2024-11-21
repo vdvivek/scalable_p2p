@@ -1,6 +1,7 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include "CryptoManager.h"
 #include "NetworkManager.h"
 #include "NodeType.h"
 #include "Packet.hpp"
@@ -52,6 +53,16 @@ public:
                                     std::string &senderName,
                                     std::string &targetIP, int &targetPort);
 
+  std::string getPublicKey() const { return cryptoManager->getPublicKey(); }
+
+  std::vector<uint8_t> encryptMessage(const std::string &message) const {
+    return cryptoManager->encrypt(message);
+  }
+
+  std::string decryptMessage(const std::vector<uint8_t> &ciphertext) const {
+    return cryptoManager->decrypt(ciphertext);
+  }
+
 protected:
   NodeType::Type type;
 
@@ -68,6 +79,8 @@ protected:
   double delay; // delay in seconds
 
 private:
+  std::unique_ptr<CryptoManager> cryptoManager;
+
   void simulateSignalDelay();
 
   static std::string generateUUID();

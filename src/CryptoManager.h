@@ -22,6 +22,5 @@ private:
   RSA *publicKey = nullptr;
 
   void generateKeyPair();
-  static uint32_t calculateCRC(const std::vector<uint8_t> &data);
   static std::string getOpenSSLError();
 };

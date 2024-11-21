@@ -171,6 +171,7 @@ NetworkManager::createNodePayload(const std::string &action,
   auto coords = node->getCoords();
   payload["x"] = coords.first;
   payload["y"] = coords.second;
+  payload["publicKey"] = node->getPublicKey();
   return payload;
 }
 
