@@ -9,7 +9,7 @@
 #include "../src/Node.h"
 #include "../src/NodeType.h"
 
-const int UPDATE_INTERVAL = 30;
+const int UPDATE_INTERVAL = 3;
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
     positionUpdateThread = std::thread([satelliteNode]() {
       while (isRunning) {
         satelliteNode->updatePosition();
-        std::this_thread::sleep_for(std::chrono::seconds(2)); // Update position every 2 second
+        std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL)); // Update position every 2 second
       }
     });
 
