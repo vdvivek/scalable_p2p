@@ -7,7 +7,7 @@ from packet import Packet, PacketType
 from uuid import uuid4
 import random
 
-#written by Hritika Rahul Mehta and Ziqi Zheng
+# Written by Hritika Rahul Mehta and Ziqi Zheng
 
 class GroundNode:
     def __init__(self, node_id, port, x, y):
