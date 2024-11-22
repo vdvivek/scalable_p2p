@@ -1,9 +1,13 @@
-#include "arpa/inet.h"
 #include "NexusRegistryServer.h"
-#include "NodeType.h"
+#include <algorithm>
+#include <arpa/inet.h>
+#include <cstring>
+#include <stdexcept>
+#include <unistd.h>
+#include <utility>
 
-NexusRegistryServer::NexusRegistryServer(const std::string &ip, int port)
-    : ip(ip), port(port), isRunning(false) {}
+NexusRegistryServer::NexusRegistryServer(std::string ip, const int port)
+    : ip(std::move(ip)), port(port), isRunning(false) {}
 
 NexusRegistryServer::~NexusRegistryServer() { stop(); }
 
@@ -26,11 +30,11 @@ void NexusRegistryServer::start() {
 
   if (bind(serverSocket, reinterpret_cast<struct sockaddr *>(&serverAddr),
            sizeof(serverAddr)) < 0) {
-    logger.log(LogLevel::ERROR, "Failed to bind socket to " + ip + ":" +
-                                    std::to_string(port));
+    logger.log(LogLevel::ERROR,
+               "Failed to bind socket to " + ip + ":" + std::to_string(port));
     close(serverSocket);
     return;
-           }
+  }
 
   if (listen(serverSocket, 10) < 0) {
     logger.log(LogLevel::ERROR, "Failed to listen on socket.");
@@ -65,170 +69,171 @@ void NexusRegistryServer::stop() {
   logger.log(LogLevel::INFO, "NexusRegistryServer stopped.");
 }
 
-void NexusRegistryServer::processRequest(const std::string &request,
-                                         std::string &response) {
-  Json::Reader reader;
-  Json::Value root;
-  if (!reader.parse(request, root)) {
-    response = R"({"error": "Invalid JSON format"})";
-    return;
+void NexusRegistryServer::handleClient(int clientSocket) {
+  auto request = readFromSocket(clientSocket);
+  auto response = processRequest(request);
+  writeToSocket(clientSocket, response);
+  close(clientSocket);
+}
+
+std::vector<uint8_t>
+NexusRegistryServer::processRequest(const std::vector<uint8_t> &request) {
+  if (request.empty()) {
+    return {0xFF}; // Error code for invalid request
   }
 
-  std::string action = root["action"].asString();
+  uint8_t action = request[0];
+  std::vector<uint8_t> response;
 
-  if (action == "register") {
-    std::pair<double, double> coords = {
-        roundToTwoDecimalPlaces(std::stod(root["x"].asString())),
-        roundToTwoDecimalPlaces(std::stod(root["y"].asString()))};
-
-    NodeInfo node = {root["type"].asString(), root["name"].asString(),
-                     root["ip"].asString(),   coords,
-                     root["port"].asInt(),    root["publicKey"].asString()};
+  switch (action) {
+  case 0x01: { // Register node
+    NodeInfo node = deserializeNode(
+        std::vector<uint8_t>(request.begin() + 1, request.end()));
     registerNode(node);
-    response = R"({"message": "Node registered successfully"})";
-  } else if (action == "deregister") {
-    deregisterNode(root["name"].asString());
-    response = R"({"message": "Node deregistered successfully"})";
-  } else if (action == "list") {
-    response = getNodeList();
-  } else if (action == "update") {
-    NodeInfo node = {
-        root["type"].asString(), root["name"].asString(),
-        root["ip"].asString(),   {root["x"].asDouble(), root["y"].asDouble()},
-        root["port"].asInt(),    root["publicKey"].asString()};
-    ;
-    updateNode(node);
-    response = R"({"message":"Node updated successfully"})";
-  } else if (action == "getPublicKey") {
-    std::string nodeName = root["name"].asString();
-    auto node = findNodeByName(nodeName);
-    if (!node.publicKey.empty()) {
-      response = R"({"publicKey": ")" + node.publicKey + R"("})";
-    } else {
-      response = R"({"error": "Node not found"})";
-    }
-  } else {
-    response = R"({"error": "Unknown action"})";
+    response.push_back(0x00); // Success
+    break;
   }
+  case 0x02: { // Deregister node
+    std::string name(reinterpret_cast<const char *>(request.data() + 1),
+                     request.size() - 1);
+    deregisterNode(name);
+    response.push_back(0x00); // Success
+    break;
+  }
+  case 0x03: { // Get node list
+    response = getNodeList();
+    break;
+  }
+  default:
+    response.push_back(0xFF); // Unknown action
+    break;
+  }
+
+  return response;
 }
 
 void NexusRegistryServer::registerNode(const NodeInfo &node) {
   std::lock_guard<std::mutex> lock(nodesMutex);
   nodes.push_back(node);
-  logger.log(LogLevel::INFO, "Registered node: " + node.type + " " + node.name +
-                                 " (" + node.ip + ":" +
-                                 std::to_string(node.port) + ")" + " at [" +
-                                 std::to_string(node.coords.first) + ", " +
-                                 std::to_string(node.coords.second) + "].");
+  logger.log(LogLevel::INFO, "Registered node: " + node.name + " (" + node.ip +
+                                 ":" + std::to_string(node.port) + ")" +
+                                 " with public key: " + node.publicKey);
+}
+
+std::string trimNull(const std::string &str) {
+  size_t end = str.find('\0');
+  if (end != std::string::npos) {
+    return str.substr(0, end);
+  }
+  return str;
 }
 
 void NexusRegistryServer::deregisterNode(const std::string &name) {
   std::lock_guard<std::mutex> lock(nodesMutex);
+
+  std::string sanitizedName = trimNull(name);
+  logger.log(LogLevel::DEBUG, "Deregistering node: " + sanitizedName);
+
+  auto initialSize = nodes.size();
+
   nodes.erase(std::remove_if(
                   nodes.begin(), nodes.end(),
-                  [&name](const NodeInfo &node) { return node.name == name; }),
+                  [&sanitizedName](const NodeInfo &node) {
+                      return node.name == sanitizedName;
+                  }),
               nodes.end());
-  logger.log(LogLevel::INFO, "Deregistered node: " + name);
-}
 
-void NexusRegistryServer::updateNode(const NodeInfo &node) {
-  std::lock_guard<std::mutex> lock(nodesMutex);
-  bool nodeUpdated = false;
+  auto finalSize = nodes.size();
 
-  for (auto &existingNode : nodes) {
-    if (existingNode.name == node.name) {
-      existingNode.type = node.type;
-      existingNode.ip = node.ip;
-      existingNode.coords = node.coords;
-      existingNode.port = node.port;
-      existingNode.publicKey = node.publicKey;
-      nodeUpdated = true;
-      logger.log(LogLevel::INFO, "Updated node: " + node.name + " (" + node.ip +
-                                     ":" + std::to_string(node.port) +
-                                     ") at [" +
-                                     std::to_string(node.coords.first) + ", " +
-                                     std::to_string(node.coords.second) + "].");
-      break;
-    }
-  }
-
-  if (!nodeUpdated) {
-    logger.log(LogLevel::WARNING,
-               "Node not found for update: " + node.name + ".");
+  if (finalSize < initialSize) {
+    logger.log(LogLevel::INFO, "Deregistered node: " + sanitizedName);
+  } else {
+    logger.log(LogLevel::WARNING, "Node not found for deregistration: " + sanitizedName);
   }
 }
+
 
 NodeInfo NexusRegistryServer::findNodeByName(const std::string &name) {
   std::lock_guard<std::mutex> lock(nodesMutex);
-
   for (const auto &node : nodes) {
     if (node.name == name) {
       return node;
     }
   }
-
-  return NodeInfo{"", "", "", {0.0, 0.0}, 0, ""};
+  return NodeInfo{};
 }
 
-std::string NexusRegistryServer::getNodeList() {
+std::vector<uint8_t> NexusRegistryServer::getNodeList() {
   std::lock_guard<std::mutex> lock(nodesMutex);
-  Json::Value root;
-  try {
-    for (const auto &node : nodes) {
-      Json::Value n;
-      n["type"] = node.type;
-      n["name"] = node.name;
-      n["ip"] = node.ip;
-      n["port"] = node.port;
-      n["x"] = node.coords.first;
-      n["y"] = node.coords.second;
-      n["publicKey"] = node.publicKey;
-      root.append(n);
-    }
-  } catch (const std::exception &e) {
-    logger.log(LogLevel::ERROR,
-               "Exception while building node list: " + std::string(e.what()));
-    return "{}"; // Return empty JSON object in case of error
+  std::vector<uint8_t> response;
+
+  for (const auto &node : nodes) {
+    auto serializedNode = serializeNode(node);
+    response.insert(response.end(), serializedNode.begin(),
+                    serializedNode.end());
   }
-  Json::StreamWriterBuilder writer;
-  return Json::writeString(writer, root);
+
+  return response;
 }
 
-std::string NexusRegistryServer::readFromSocket(int socket) {
-  char buffer[4096]; // Increased buffer size for larger requests
-  int bytesRead = recv(socket, buffer, sizeof(buffer) - 1, 0);
-  if (bytesRead <= 0)
-    return "";
+std::vector<uint8_t> NexusRegistryServer::serializeNode(const NodeInfo &node) {
+  std::vector<uint8_t> data;
+  data.insert(data.end(), node.name.begin(), node.name.end());
+  data.push_back('\0');
+  data.insert(data.end(), node.ip.begin(), node.ip.end());
+  data.push_back('\0');
 
-  buffer[bytesRead] = '\0'; // Null-terminate the string
-  std::string request(buffer);
+  auto port = reinterpret_cast<const uint8_t *>(&node.port);
+  data.insert(data.end(), port, port + sizeof(node.port));
 
-  // Find the double CRLF that separates headers from the body
-  size_t bodyPos = request.find("\r\n\r\n");
-  if (bodyPos != std::string::npos) {
-    return request.substr(bodyPos + 4); // Extract the body
+  auto coords = reinterpret_cast<const uint8_t *>(&node.coords);
+  data.insert(data.end(), coords, coords + sizeof(node.coords));
+
+  data.insert(data.end(), node.publicKey.begin(), node.publicKey.end());
+  data.push_back('\0'); // Null-terminate the public key
+
+  return data;
+}
+
+NodeInfo
+NexusRegistryServer::deserializeNode(const std::vector<uint8_t> &data) {
+  NodeInfo node;
+  size_t offset = 0;
+
+  while (offset < data.size() && data[offset] != '\0') {
+    node.name.push_back(data[offset++]);
+  }
+  offset++;
+
+  while (offset < data.size() && data[offset] != '\0') {
+    node.ip.push_back(data[offset++]);
+  }
+  offset++;
+
+  std::memcpy(&node.port, data.data() + offset, sizeof(node.port));
+  offset += sizeof(node.port);
+
+  std::memcpy(&node.coords, data.data() + offset, sizeof(node.coords));
+  offset += sizeof(node.coords);
+
+  while (offset < data.size() && data[offset] != '\0') {
+    node.publicKey.push_back(data[offset++]);
   }
 
-  return ""; // No request body found
+  return node;
+}
+
+std::vector<uint8_t> NexusRegistryServer::readFromSocket(int socket) {
+  std::vector<uint8_t> buffer(4096);
+  int bytesRead = recv(socket, buffer.data(), buffer.size(), 0);
+  if (bytesRead <= 0) {
+    return {};
+  }
+  buffer.resize(bytesRead);
+  return buffer;
 }
 
 void NexusRegistryServer::writeToSocket(int socket,
-                                        const std::string &response) {
-  std::string httpResponse = "HTTP/1.1 200 OK\r\n"
-                             "Content-Type: application/json\r\n"
-                             "Content-Length: " +
-                             std::to_string(response.size()) +
-                             "\r\n"
-                             "\r\n" +
-                             response;
-
-  send(socket, httpResponse.c_str(), httpResponse.size(), 0);
-}
-
-void NexusRegistryServer::handleClient(int clientSocket) {
-  std::string request = readFromSocket(clientSocket);
-  std::string response;
-  processRequest(request, response);
-  writeToSocket(clientSocket, response);
-  close(clientSocket);
+                                        const std::vector<uint8_t> &response) {
+  send(socket, response.data(), response.size(), 0);
 }

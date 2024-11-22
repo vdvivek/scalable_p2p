@@ -1,18 +1,15 @@
 #ifndef NEXUS_REGISTRY_SERVER_H
 #define NEXUS_REGISTRY_SERVER_H
 
+#include <cstdint>
 #include <iostream>
-#include <json/json.h>
 #include <mutex>
 #include <netinet/in.h>
 #include <string>
 #include <thread>
-#include <unistd.h>
-#include <unordered_map>
 #include <vector>
 
 #include "Logger.h"
-#include "Utility.h"
 
 struct NodeInfo {
   std::string type;
@@ -25,7 +22,7 @@ struct NodeInfo {
 
 class NexusRegistryServer {
 public:
-  explicit NexusRegistryServer(const std::string &ip, int port);
+  NexusRegistryServer(std::string ip, int port);
   ~NexusRegistryServer();
 
   void start();
@@ -33,22 +30,24 @@ public:
 
 private:
   int serverSocket{};
-  int port;
   std::string ip;
+  int port;
   std::vector<NodeInfo> nodes;
   std::mutex nodesMutex;
   bool isRunning;
 
   void handleClient(int clientSocket);
-  void processRequest(const std::string &request, std::string &response);
+  std::vector<uint8_t> processRequest(const std::vector<uint8_t> &request);
   void registerNode(const NodeInfo &node);
   void deregisterNode(const std::string &name);
-  void updateNode(const NodeInfo &node);
   NodeInfo findNodeByName(const std::string &name);
-  std::string getNodeList();
+  std::vector<uint8_t> getNodeList();
 
-  static std::string readFromSocket(int socket);
-  static void writeToSocket(int socket, const std::string &response);
+  std::vector<uint8_t> readFromSocket(int socket);
+  void writeToSocket(int socket, const std::vector<uint8_t> &response);
+
+  std::vector<uint8_t> serializeNode(const NodeInfo &node);
+  NodeInfo deserializeNode(const std::vector<uint8_t> &data);
 };
 
 #endif // NEXUS_REGISTRY_SERVER_H
