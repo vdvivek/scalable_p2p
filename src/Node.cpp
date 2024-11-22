@@ -85,7 +85,7 @@ void Node::receiveMessage(std::string &message) {
   constexpr size_t bufferSize = MAX_BUFFER_SIZE + 32;
   char buffer[bufferSize];
 
-  struct sockaddr_in senderAddr {};
+  struct sockaddr_in senderAddr{};
   socklen_t senderAddrLen = sizeof(senderAddr);
 
   ssize_t bytesReceived = recvfrom(

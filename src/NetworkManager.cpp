@@ -1,12 +1,16 @@
-#include "NetworkManager.h"
-
+#include "climits"
 #include <curl/curl.h> // Requires libcurl
 #include <json/json.h>
 
 #include <iostream>
 
 #include "Logger.h"
+#include "NetworkManager.h"
 #include "Node.h"
+
+#ifndef LONG_LONG_MAX
+#define LONG_LONG_MAX LLONG_MAX
+#endif
 
 #define print(x) std::cout << x << std::endl;
 
@@ -339,7 +343,7 @@ void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
     for (int j = 0; j < nodes.size(); j++) {
       row += std::to_string(topology[i][j]) + "\t";
     }
-    logger.log(LogLevel::DEBUG, row);
+    // logger.log(LogLevel::DEBUG, row);
   }
 
   int src_idx = 0;

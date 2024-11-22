@@ -75,7 +75,7 @@ protected:
   const NetworkManager &networkManager;
 
   int socket_fd;
-  struct sockaddr_in addr {};
+  struct sockaddr_in addr{};
   double delay; // delay in seconds
 
 private:

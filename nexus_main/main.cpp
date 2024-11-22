@@ -10,7 +10,7 @@
 #include "../src/Node.h"
 #include "../src/NodeType.h"
 
-// #define DEBUG
+#define DEBUG 0
 
 const int UPDATE_INTERVAL = 30;
 
