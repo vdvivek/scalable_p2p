@@ -43,6 +43,7 @@ private:
   void registerNode(const NodeInfo &node);
   void deregisterNode(const std::string &name);
   void updateNode(const NodeInfo &node);
+  NodeInfo findNodeByName(const std::string &name);
   std::string getNodeList();
 
   static std::string readFromSocket(int socket);

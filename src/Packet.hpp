@@ -30,14 +30,14 @@ struct Packet {
   Packet(uint32_t sAddr, uint16_t sPort, uint32_t tAddr, uint16_t tPort,
          packetType type);
 
-  std::vector<uint8_t> serialize();
+  std::vector<uint8_t> serialize() const;
   static Packet deserialize(const std::vector<uint8_t> &buffer);
 
   void computeCRC();
-  bool verifyCRC();
+  bool verifyCRC() const;
 
 private:
-  static uint32_t calculateCRC(const std::vector<uint8_t> &data);
+  uint32_t calculateCRC(const std::vector<uint8_t> &data) const;
 };
 
 #endif

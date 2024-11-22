@@ -92,6 +92,14 @@ void NexusRegistryServer::processRequest(const std::string &request,
     ;
     updateNode(node);
     response = R"({"message":"Node updated successfully"})";
+  } else if (action == "getPublicKey") {
+    std::string nodeName = root["name"].asString();
+    auto node = findNodeByName(nodeName);
+    if (!node.publicKey.empty()) {
+      response = R"({"publicKey": ")" + node.publicKey + R"("})";
+    } else {
+      response = R"({"error": "Node not found"})";
+    }
   } else {
     response = R"({"error": "Unknown action"})";
   }
@@ -141,6 +149,18 @@ void NexusRegistryServer::updateNode(const NodeInfo &node) {
     logger.log(LogLevel::WARNING,
                "Node not found for update: " + node.name + ".");
   }
+}
+
+NodeInfo NexusRegistryServer::findNodeByName(const std::string &name) {
+  std::lock_guard<std::mutex> lock(nodesMutex);
+
+  for (const auto &node : nodes) {
+    if (node.name == name) {
+      return node;
+    }
+  }
+
+  return NodeInfo{"", "", "", {0.0, 0.0}, 0, ""};
 }
 
 std::string NexusRegistryServer::getNodeList() {

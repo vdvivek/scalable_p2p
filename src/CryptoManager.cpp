@@ -44,11 +44,29 @@ std::string CryptoManager::getPublicKey() const {
 }
 
 std::vector<uint8_t>
-CryptoManager::encrypt(const std::string &plaintext) const {
-  std::vector<uint8_t> encrypted(RSA_size(publicKey));
+CryptoManager::encrypt(const std::string &plaintext,
+                       const std::string &recipientPublicKeyPEM) const {
+  BIO *bio = BIO_new_mem_buf(recipientPublicKeyPEM.data(),
+                             static_cast<int>(recipientPublicKeyPEM.size()));
+  if (!bio) {
+    throw std::runtime_error("Failed to create BIO for recipient public key");
+  }
+
+  RSA *recipientPublicKey =
+      PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+  if (!recipientPublicKey) {
+    throw std::runtime_error("Failed to load recipient public key: " +
+                             getOpenSSLError());
+  }
+
+  std::vector<uint8_t> encrypted(RSA_size(recipientPublicKey));
+
   int len = RSA_public_encrypt(
       plaintext.size(), reinterpret_cast<const uint8_t *>(plaintext.c_str()),
-      encrypted.data(), publicKey, RSA_PKCS1_OAEP_PADDING);
+      encrypted.data(), recipientPublicKey, RSA_PKCS1_OAEP_PADDING);
+
+  RSA_free(recipientPublicKey);
 
   if (len < 0) {
     throw std::runtime_error("Encryption failed: " + getOpenSSLError());
