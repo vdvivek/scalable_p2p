@@ -10,7 +10,9 @@
 #include "../src/Node.h"
 #include "../src/NodeType.h"
 
-const int UPDATE_INTERVAL = 3;
+// #define DEBUG
+
+const int UPDATE_INTERVAL = 30;
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
@@ -56,12 +58,6 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::cout << "Enter target node name: ";
       std::cin >> targetName;
 
-      std::cout << "Enter target IP: ";
-      std::cin >> targetIP;
-
-      std::cout << "Enter target port: ";
-      std::cin >> targetPort;
-
       // Clear the input buffer before reading the message
       std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -69,21 +65,13 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::getline(std::cin, message);
 
       if (!message.empty()) {
-        std::string fullMessage = node->getName() + " " + targetIP + " " +
-                                  std::to_string(targetPort) + " " + message;
-        node->sendMessage(targetName, targetIP, targetPort, fullMessage);
+        node->sendMessage(targetName, message);
       } else {
         logger.log(LogLevel::ERROR, "Message cannot be empty.");
       }
     } else if (command == "file") {
       std::cout << "Enter target node name: ";
       std::cin >> targetName;
-
-      std::cout << "Enter target IP: ";
-      std::cin >> targetIP;
-
-      std::cout << "Enter target port: ";
-      std::cin >> targetPort;
 
       // Clear the input buffer before reading the message
       std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -96,7 +84,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
         continue;
       }
 
-      node->sendFile(targetName, targetIP, targetPort, message);
+      node->sendFile(targetName, message);
     } else if (command == "list") {
       networkManager.listNodes();
     }
@@ -197,9 +185,11 @@ int main(int argc, char **argv) {
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
+#ifdef DEBUG
       logger.log(LogLevel::INFO,
                  "[NEXUS] Refreshing local network manager every " +
                      std::to_string(UPDATE_INTERVAL) + " seconds ...");
+#endif
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
