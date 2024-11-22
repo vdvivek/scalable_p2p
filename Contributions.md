@@ -9,5 +9,5 @@
 * Registry Server: ```Kaaviya```
 ---
 * Python Routing and inter-satellite linking: ```Hritika Rahul Mehta & Zheng```
-* File transfer using Python: ```Hritika Rahul Mehta & Zheng```
-* Python Prototyping: ```Hritika Rahul Mehta & Zheng```
+* File transfer using Python: ```Hritika Rahul Mehta & Ziqi Zheng```
+* Python Prototyping: ```Hritika Rahul Mehta & Ziqi Zheng```
