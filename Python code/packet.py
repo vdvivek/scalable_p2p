@@ -4,7 +4,7 @@ from enum import Enum
 
 # PacketType Enum
 
-#written by Hritika Rahul Mehta and Ziqi Zheng
+# Written by Hritika Rahul Mehta and Ziqi Zheng
 class PacketType(Enum):
     DATA = 1
     ACK = 2
