@@ -1,8 +1,9 @@
+#include "arpa/inet.h"
 #include "NexusRegistryServer.h"
 #include "NodeType.h"
 
-NexusRegistryServer::NexusRegistryServer(int port)
-    : port(port), isRunning(false) {}
+NexusRegistryServer::NexusRegistryServer(const std::string &ip, int port)
+    : ip(ip), port(port), isRunning(false) {}
 
 NexusRegistryServer::~NexusRegistryServer() { stop(); }
 
@@ -18,6 +19,12 @@ void NexusRegistryServer::start() {
   serverAddr.sin_addr.s_addr = INADDR_ANY;
   serverAddr.sin_port = htons(port);
 
+  if (inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr) <= 0) {
+    logger.log(LogLevel::ERROR, "Invalid IP address: " + ip);
+    close(serverSocket);
+    return;
+  }
+
   if (bind(serverSocket, reinterpret_cast<struct sockaddr *>(&serverAddr),
            sizeof(serverAddr)) < 0) {
     logger.log(LogLevel::ERROR, "Failed to bind socket.");
@@ -32,7 +39,7 @@ void NexusRegistryServer::start() {
   }
 
   isRunning = true;
-  logger.log(LogLevel::INFO, "NexusRegistryServer is running on port " +
+  logger.log(LogLevel::INFO, "NexusRegistryServer is running on " + ip + ":" +
                                  std::to_string(port) + ".");
 
   while (isRunning) {
