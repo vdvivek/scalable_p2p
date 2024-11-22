@@ -132,6 +132,15 @@ void Node::sendMessage(const std::string &targetName,
                        const std::string &message) {
   auto targetNode = networkManager.findNode(targetName);
 
+  // Fetch the target's public key from the NetworkManager
+  std::string recipientPublicKey = networkManager.getNodePublicKey(targetName);
+  if (recipientPublicKey.empty()) {
+    logger.log(LogLevel::ERROR, "Failed to retrieve public key for target: " + targetName);
+    return;
+  }
+
+  // Encrypt the message with the recipient's public key
+  std::vector<uint8_t> encryptedMessage = encryptMessage(message, recipientPublicKey);
   if (targetNode == nullptr) {
     logger.log(LogLevel::ERROR, "[NEXUS] Node " + targetName + " not found.");
     return;
@@ -153,7 +162,7 @@ void Node::sendMessage(const std::string &targetName,
   Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
              targetAddr.sin_port, packetType::TEXT);
 
-  std::copy(message.begin(), message.end(), pkt.data.begin());
+  std::copy(encryptedMessage.begin(), encryptedMessage.end(), pkt.data.begin());
 
   auto packet_data = pkt.serialize();
   logger.log(LogLevel::INFO,
@@ -317,7 +326,7 @@ void Node::simulateSignalDelay() {
       std::chrono::milliseconds(static_cast<int>(delay * 1000)));
 }
 
-void Node::processMessage(Packet &pkt) {
+void Node::processMessage(Packet &pkt) const {
   char IP[INET_ADDRSTRLEN + 1];
   inet_ntop(AF_INET, &(pkt.sAddress), IP, sizeof(IP));
   int PORT = ntohs(pkt.tPort);
@@ -331,7 +340,18 @@ void Node::processMessage(Packet &pkt) {
     reassembleFile(pkt);
   } else {
     logger.log(LogLevel::INFO,
-               "[NEXUS] Message:" +
+               "[NEXUS] Encrypted Message:" +
+                   std::string(pkt.data.begin(), pkt.data.end()));
+    try {
+      const std::vector<uint8_t> cipherText(pkt.data.begin(), pkt.data.end());
+      std::string message = this->decryptMessage(cipherText);
+      logger.log(LogLevel::INFO, "Decrypted message: " + message);
+    } catch (const std::exception &ex) {
+      logger.log(LogLevel::ERROR, "Failed to decrypt message: " + std::string(ex.what()));
+    }
+
+    logger.log(LogLevel::INFO,
+               "[NEXUS] Encrypted Message:" +
                    std::string(pkt.data.begin(), pkt.data.end()));
   }
 }

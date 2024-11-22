@@ -40,7 +40,7 @@ public:
                             const std::string &jsonPayload);
   bool updateNodeInRegistry(const std::shared_ptr<Node> &node) const;
 
-  std::string getNodePublicKey(const std::string &nodeName);
+  std::string getNodePublicKey(const std::string &nodeName) const;
 
   void createRoutingTable();
   void updateRoutingTable(const std::shared_ptr<Node> &src);

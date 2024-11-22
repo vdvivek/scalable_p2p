@@ -84,7 +84,7 @@ private:
   void simulateSignalDelay();
 
   static std::string generateUUID();
-  static void processMessage(Packet &pkt);
+  void processMessage(Packet &pkt) const;
   static void writeToFile(Packet &pkt);
   static void reassembleFile(Packet &pkt);
 };

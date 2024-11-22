@@ -201,7 +201,7 @@ bool NetworkManager::updateNodeInRegistry(
   return performCurlRequest(url, payload.toStyledString(), response);
 }
 
-std::string NetworkManager::getNodePublicKey(const std::string &nodeName) {
+std::string NetworkManager::getNodePublicKey(const std::string &nodeName) const {
   Json::Value payload;
   payload["action"] = "getPublicKey";
   payload["name"] = nodeName;
