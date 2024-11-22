@@ -1,7 +1,7 @@
 import asyncio
 from ground_node import GroundNode
 
-#written by Hritika Rahul Mehta and Ziqi Zheng
+# Written by Hritika Rahul Mehta and Ziqi Zheng
 async def send_file():
     
     ground_node_sender = GroundNode(1, 35001, 10.0, 20.0)
