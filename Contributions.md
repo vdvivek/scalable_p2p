@@ -8,6 +8,6 @@
 * Error Checking: ```Kaaviya```
 * Registry Server: ```Kaaviya```
 ---
-* ML Routing: ```Zheng and Hritika```
-* ML Secutity: ```Zheng and Hritika```
-* Prototyping: ```Zheng and Hritika```
+* Python Routing and inter-satellite linking: ```Hritika Rahul Mehta & Zheng```
+* File transfer using Python: ```Hritika Rahul Mehta & Zheng```
+* Python Prototyping: ```Hritika Rahul Mehta & Zheng```
