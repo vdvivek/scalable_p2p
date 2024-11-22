@@ -196,6 +196,35 @@ bool NetworkManager::updateNodeInRegistry(
   return performCurlRequest(url, payload.toStyledString(), response);
 }
 
+std::string NetworkManager::getNodePublicKey(const std::string &nodeName) {
+  Json::Value payload;
+  payload["action"] = "getPublicKey";
+  payload["name"] = nodeName;
+
+  std::string response;
+  std::string url = registryAddress + "/getPublicKey";
+  if (!performCurlRequest(url, payload.toStyledString(), response)) {
+    throw std::runtime_error("Failed to fetch public key for node: " +
+                             nodeName);
+  }
+
+  Json::CharReaderBuilder reader;
+  Json::Value jsonResponse;
+  std::istringstream responseStream(response);
+  std::string errs;
+
+  if (!Json::parseFromStream(reader, responseStream, &jsonResponse, &errs)) {
+    throw std::runtime_error("Invalid response while fetching public key: " +
+                             errs);
+  }
+
+  if (!jsonResponse.isMember("publicKey")) {
+    throw std::runtime_error("No public key found for node: " + nodeName);
+  }
+
+  return jsonResponse["publicKey"].asString();
+}
+
 void NetworkManager::fetchNodesFromRegistry() {
   Json::Value payload;
   payload["action"] = "list";
