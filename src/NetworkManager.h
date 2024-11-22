@@ -2,6 +2,7 @@
 #define NETWORKMANAGER_H
 
 #include <cmath>
+#include <limits.h>
 #include <memory>
 #include <string>
 #include <vector>

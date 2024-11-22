@@ -115,10 +115,6 @@ void Node::receiveMessage(std::string &message) {
                                  std::to_string(senderPort));
   Packet pkt = pkt.deserialize(receivedMessage);
 
-  // std::ofstream debugFile("img3.webp", std::ios::binary | std::ios::app);
-  // debugFile.write(reinterpret_cast<char *>(pkt.data.data()),
-  // pkt.data.size()); debugFile.close();
-
   if ((pkt.tAddress == addr.sin_addr.s_addr) && (pkt.tPort == htons(port))) {
     processMessage(pkt);
   } else {
@@ -129,10 +125,6 @@ void Node::receiveMessage(std::string &message) {
     logger.log(LogLevel::INFO, "[NEXUS] Forwarding to " + std::string(nextIP) +
                                    ":" + std::to_string(nextPort));
     sendTo(nextIP, nextPort, pkt);
-
-    // Send to specified node
-    // Extract specified final node
-    // sendMessage(sockaddr_in, pkt);
   }
 }
 
@@ -160,6 +152,8 @@ void Node::sendMessage(const std::string &targetName,
 
   Packet pkt(addr.sin_addr.s_addr, addr.sin_port, targetAddr.sin_addr.s_addr,
              targetAddr.sin_port, packetType::TEXT);
+
+  std::copy(message.begin(), message.end(), pkt.data.begin());
 
   auto packet_data = pkt.serialize();
   logger.log(LogLevel::INFO,
@@ -324,9 +318,11 @@ void Node::simulateSignalDelay() {
 }
 
 void Node::processMessage(Packet &pkt) {
-  logger.log(LogLevel::INFO, "[NEXUS] Processing message from " +
-                                 std::to_string(pkt.sAddress) + ":" +
-                                 std::to_string(pkt.sPort));
+  char IP[INET_ADDRSTRLEN + 1];
+  inet_ntop(AF_INET, &(pkt.sAddress), IP, sizeof(IP));
+  int PORT = ntohs(pkt.tPort);
+  IP[INET_ADDRSTRLEN] = '\0';
+
   if (pkt.type == packetType::FILE) {
     logger.log(LogLevel::INFO, "[NEXUS] Writing to file, Fragment: " +
                                    std::to_string(pkt.fragmentNumber) + "/" +
@@ -334,7 +330,9 @@ void Node::processMessage(Packet &pkt) {
     writeToFile(pkt);
     reassembleFile(pkt);
   } else {
-    // TODO
+    logger.log(LogLevel::INFO,
+               "[NEXUS] Message:" +
+                   std::string(pkt.data.begin(), pkt.data.end()));
   }
 }
 

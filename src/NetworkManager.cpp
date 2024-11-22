@@ -8,8 +8,6 @@
 #include "Logger.h"
 #include "Node.h"
 
-#define print(x) std::cout << x << std::endl;
-
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
 
@@ -190,8 +188,8 @@ NetworkManager::createNodePayload(const std::string &action,
 
 bool NetworkManager::updateNodeInRegistry(
     const std::shared_ptr<Node> &node) const {
-  logger.log(LogLevel::DEBUG,
-             "[NEXUS] Updating node at NexusRegistryServer ...");
+  // logger.log(LogLevel::DEBUG,
+  //            "[NEXUS] Updating node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("update", node);
   std::string url = registryAddress + "/update";
   std::string response;
@@ -298,24 +296,9 @@ void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
     }
   }
 
-  // for (int i = 0; i < nodes.size(); i++) {
-  //   for (int j = 0; j < nodes.size(); j++) {
-  //     std::cout << topology[i][j] << "\t";
-  //   }
-  //   std::cout << std::endl;
-  // }
-
-  for (int i = 0; i < nodes.size(); i++) {
-    std::string row;
-    for (int j = 0; j < nodes.size(); j++) {
-      row += std::to_string(topology[i][j]) + "\t";
-    }
-    logger.log(LogLevel::DEBUG, row);
-  }
-
   int src_idx = 0;
   for (int i = 0; i < nodes.size(); i++) {
-    if (nodes[i]->getId() == src->getId()) {
+    if (nodes[i]->getName() == src->getName()) {
       src_idx = i;
       break;
     }
@@ -349,7 +332,7 @@ void NetworkManager::route(int src_idx) {
     visited[minUnvIdx] = true;
 
     for (int j = 0; j < nodes.size(); j++) {
-      if (!visited[j] && topology[minUnvIdx][j] != 0 &&
+      if (!visited[j] && topology[minUnvIdx][j] != LONG_LONG_MAX &&
           minDist[minUnvIdx] + topology[minUnvIdx][j] < minDist[j]) {
         minDist[j] = minDist[minUnvIdx] + topology[minUnvIdx][j];
         if (minUnvIdx == src_idx)
@@ -371,13 +354,9 @@ NetworkManager::getNextHop(const std::string &name) const {
     }
   }
 
-#ifndef DEBUG
-  for (int i = 0; i < nextHop.size(); i++) {
-    std::cout << "To get to " << nodes[i]->getIP() << ":" << nodes[i]->getPort()
-              << " traverse " << nodes[nextHop[i]]->getIP() << ":"
-              << nodes[nextHop[i]]->getPort() << std::endl;
+  if (n_idx == -1 || n_idx >= nodes.size()) {
+    return nullptr;
+  } else {
+    return nodes[nextHop[n_idx]];
   }
-#endif
-
-  return nodes[nextHop[n_idx]];
 }

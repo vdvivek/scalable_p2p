@@ -10,9 +10,7 @@
 #include "../src/Node.h"
 #include "../src/NodeType.h"
 
-// #define DEBUG
-
-const int UPDATE_INTERVAL = 30;
+const int UPDATE_INTERVAL = 3;
 
 NetworkManager networkManager("http://127.0.0.1:5001");
 std::atomic<bool> isRunning{true};
@@ -185,11 +183,9 @@ int main(int argc, char **argv) {
   // Move to a function later
   std::thread fetchNodeThread([node]() {
     while (isRunning) {
-#ifdef DEBUG
       logger.log(LogLevel::INFO,
                  "[NEXUS] Refreshing local network manager every " +
                      std::to_string(UPDATE_INTERVAL) + " seconds ...");
-#endif
       networkManager.fetchNodesFromRegistry();
       networkManager.updateRoutingTable(node);
       std::this_thread::sleep_for(std::chrono::seconds(UPDATE_INTERVAL));
