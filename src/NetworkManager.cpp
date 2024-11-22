@@ -1,12 +1,17 @@
 #include "NetworkManager.h"
 
-#include <curl/curl.h> // Requires libcurl
+#include <curl/curl.h>
 #include <json/json.h>
+#include "climits"
 
 #include <iostream>
 
 #include "Logger.h"
 #include "Node.h"
+
+#ifndef LONG_LONG_MAX
+#define LONG_LONG_MAX LLONG_MAX
+#endif
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
