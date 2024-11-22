@@ -14,7 +14,7 @@
 
 const int UPDATE_INTERVAL = 30;
 
-NetworkManager networkManager("http://127.0.0.1:5001");
+NetworkManager networkManager("http://10.35.70.36:5001");
 std::atomic<bool> isRunning{true};
 
 void printUsage() {
