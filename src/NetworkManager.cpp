@@ -1,10 +1,14 @@
+#include "NetworkManager.h"
+
 #include <curl/curl.h> // Requires libcurl
-#include <iostream>
 #include <json/json.h>
 
+#include <iostream>
+
 #include "Logger.h"
-#include "NetworkManager.h"
 #include "Node.h"
+
+#define print(x) std::cout << x << std::endl;
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
     : registryAddress(registryAddress) {}
@@ -129,6 +133,15 @@ void NetworkManager::listNodes() const {
   }
 }
 
+std::shared_ptr<Node> NetworkManager::findNode(const std::string &name) const {
+  for (auto &node : nodes) {
+    if (node->getName() == name) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
 std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
   for (const std::shared_ptr<Node> &node : nodes) {
@@ -175,7 +188,8 @@ NetworkManager::createNodePayload(const std::string &action,
   return payload;
 }
 
-bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node> &node) {
+bool NetworkManager::updateNodeInRegistry(
+    const std::shared_ptr<Node> &node) const {
   logger.log(LogLevel::DEBUG,
              "[NEXUS] Updating node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("update", node);
@@ -242,8 +256,9 @@ void NetworkManager::fetchNodesFromRegistry() {
     }
 
     auto node = parseNodeFromJson(nodeJson);
-    if (node)
+    if (node) {
       addNode(node);
+    }
   }
 }
 
@@ -259,9 +274,11 @@ NetworkManager::parseNodeFromJson(const Json::Value &nodeJson) const {
   double y = nodeJson.get("y", 0.0).asDouble();
   NodeType::Type type = NodeType::fromString(nodeJson["type"].asString());
 
-  return std::make_shared<Node>(
+  std::shared_ptr<Node> node = std::make_shared<Node>(
       type, nodeJson["name"].asString(), nodeJson["ip"].asString(),
       nodeJson["port"].asInt(), std::make_pair(x, y), *this);
+
+  return node;
 }
 
 void NetworkManager::createRoutingTable() {
@@ -269,7 +286,7 @@ void NetworkManager::createRoutingTable() {
   topology.resize(nodes.size());
 
   for (int i = 0; i < nodes.size(); i++) {
-    topology[i] = std::vector<int>(nodes.size(), 0);
+    topology[i] = std::vector<long long>(nodes.size(), 0);
   }
 }
 
@@ -285,24 +302,37 @@ void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
 
       int x_diff = std::pow(i_coords.first - j_coords.first, 2);
       int y_diff = std::pow(i_coords.second - j_coords.second, 2);
+      long long weight = std::sqrt(x_diff + y_diff);
 
-      int weight = 0;
-
-      auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
-      auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
+      auto i_isGround = (nodes[i]->getType() == NodeType::GROUND);
+      auto j_isGround = (nodes[j]->getType() == NodeType::GROUND);
 
       if (i_isGround && j_isGround) {
-        weight += 10000; // PRIORITIZE SATELLITE
+        topology[i][j] = LONG_LONG_MAX;
+        topology[j][i] = LONG_LONG_MAX;
+        continue;
       } else if (i_isGround) {
-        weight += 50;
+        weight += 1000;
       } else if (j_isGround) {
-        weight += 50;
+        weight += 1000;
       }
 
-      topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
-      topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
+      // Applying a quadratic penalty when exceeding 500 units
+      if (weight > 500) {
+        weight = 500 + (weight - 500) * (weight - 500);
+      }
+
+      topology[i][j] = weight;
+      topology[j][i] = weight;
     }
   }
+
+  // for (int i = 0; i < nodes.size(); i++) {
+  //   for (int j = 0; j < nodes.size(); j++) {
+  //     std::cout << topology[i][j] << "\t";
+  //   }
+  //   std::cout << std::endl;
+  // }
 
   for (int i = 0; i < nodes.size(); i++) {
     std::string row;
@@ -359,7 +389,8 @@ void NetworkManager::route(int src_idx) {
   }
 }
 
-std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
+std::shared_ptr<Node>
+NetworkManager::getNextHop(const std::string &name) const {
   int n_idx = -1;
 
   for (int i = 0; i < nodes.size(); i++) {
@@ -368,6 +399,14 @@ std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
       break;
     }
   }
+
+#ifndef DEBUG
+  for (int i = 0; i < nextHop.size(); i++) {
+    std::cout << "To get to " << nodes[i]->getIP() << ":" << nodes[i]->getPort()
+              << " traverse " << nodes[nextHop[i]]->getIP() << ":"
+              << nodes[nextHop[i]]->getPort() << std::endl;
+  }
+#endif
 
   return nodes[nextHop[n_idx]];
 }
