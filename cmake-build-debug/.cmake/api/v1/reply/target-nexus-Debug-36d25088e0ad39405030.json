@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "registry_server"
+			"path" : "nexus"
 		}
 	],
 	"backtrace" : 1,
@@ -28,7 +28,7 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 43,
+				"line" : 35,
 				"parent" : 0
 			},
 			{
@@ -40,7 +40,7 @@
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 45,
+				"line" : 37,
 				"parent" : 0
 			},
 			{
@@ -58,7 +58,7 @@
 			{
 				"command" : 4,
 				"file" : 0,
-				"line" : 52,
+				"line" : 51,
 				"parent" : 0
 			}
 		]
@@ -105,11 +105,15 @@
 			[
 				0,
 				1,
-				2
+				2,
+				3,
+				4,
+				5,
+				6
 			]
 		}
 	],
-	"id" : "registry_server::@6890427a1f51a3e7e1df",
+	"id" : "nexus::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -154,8 +158,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "registry_server",
-	"nameOnDisk" : "registry_server",
+	"name" : "nexus",
+	"nameOnDisk" : "nexus",
 	"paths" : 
 	{
 		"build" : ".",
@@ -169,7 +173,18 @@
 			[
 				0,
 				1,
-				2
+				2,
+				3,
+				4,
+				5,
+				6
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				7
 			]
 		}
 	],
@@ -178,13 +193,37 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "registry_main/main.cpp",
+			"path" : "nexus_main/main.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "src/NexusRegistryServer.cpp",
+			"path" : "src/Logger.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/CryptoManager.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/NetworkManager.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/Node.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/Packet.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
@@ -192,6 +231,11 @@
 			"compileGroupIndex" : 0,
 			"path" : "src/Utility.cpp",
 			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/NodeType.h",
+			"sourceGroupIndex" : 1
 		}
 	],
 	"type" : "EXECUTABLE"

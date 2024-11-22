@@ -25,7 +25,7 @@ struct NodeInfo {
 
 class NexusRegistryServer {
 public:
-  explicit NexusRegistryServer(int port);
+  explicit NexusRegistryServer(const std::string &ip, int port);
   ~NexusRegistryServer();
 
   void start();
@@ -34,6 +34,7 @@ public:
 private:
   int serverSocket{};
   int port;
+  std::string ip;
   std::vector<NodeInfo> nodes;
   std::mutex nodesMutex;
   bool isRunning;

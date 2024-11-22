@@ -61,9 +61,6 @@ std::vector<uint8_t> Packet::serialize() const {
 }
 
 Packet Packet::deserialize(const std::vector<uint8_t> &buffer) {
-  if (buffer.size() < sizeof(Packet)) {
-    throw std::runtime_error("Buffer size too small for deserialization");
-  }
 
   Packet packet;
   size_t offset = 0;
