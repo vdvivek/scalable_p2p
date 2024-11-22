@@ -16,7 +16,6 @@ void NexusRegistryServer::start() {
 
   sockaddr_in serverAddr{};
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_addr.s_addr = INADDR_ANY;
   serverAddr.sin_port = htons(port);
 
   if (inet_pton(AF_INET, ip.c_str(), &serverAddr.sin_addr) <= 0) {
@@ -27,10 +26,11 @@ void NexusRegistryServer::start() {
 
   if (bind(serverSocket, reinterpret_cast<struct sockaddr *>(&serverAddr),
            sizeof(serverAddr)) < 0) {
-    logger.log(LogLevel::ERROR, "Failed to bind socket.");
+    logger.log(LogLevel::ERROR, "Failed to bind socket to " + ip + ":" +
+                                    std::to_string(port));
     close(serverSocket);
     return;
-  }
+           }
 
   if (listen(serverSocket, 10) < 0) {
     logger.log(LogLevel::ERROR, "Failed to listen on socket.");
