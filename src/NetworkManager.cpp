@@ -1,9 +1,11 @@
+#include "NetworkManager.h"
+
 #include <curl/curl.h> // Requires libcurl
-#include <iostream>
 #include <json/json.h>
 
+#include <iostream>
+
 #include "Logger.h"
-#include "NetworkManager.h"
 #include "Node.h"
 
 NetworkManager::NetworkManager(const std::string &registryAddress)
@@ -129,6 +131,15 @@ void NetworkManager::listNodes() const {
   }
 }
 
+std::shared_ptr<Node> NetworkManager::findNode(const std::string &name) const {
+  for (auto &node : nodes) {
+    if (node->getName() == name) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
 std::vector<std::shared_ptr<Node>> NetworkManager::getSatelliteNodes() const {
   std::vector<std::shared_ptr<Node>> satellites;
   for (const std::shared_ptr<Node> &node : nodes) {
@@ -175,9 +186,10 @@ NetworkManager::createNodePayload(const std::string &action,
   return payload;
 }
 
-bool NetworkManager::updateNodeInRegistry(const std::shared_ptr<Node> &node) {
-  logger.log(LogLevel::DEBUG,
-             "[NEXUS] Updating node at NexusRegistryServer ...");
+bool NetworkManager::updateNodeInRegistry(
+    const std::shared_ptr<Node> &node) const {
+  // logger.log(LogLevel::DEBUG,
+  //            "[NEXUS] Updating node at NexusRegistryServer ...");
   Json::Value payload = createNodePayload("update", node);
   std::string url = registryAddress + "/update";
   std::string response;
@@ -242,8 +254,9 @@ void NetworkManager::fetchNodesFromRegistry() {
     }
 
     auto node = parseNodeFromJson(nodeJson);
-    if (node)
+    if (node) {
       addNode(node);
+    }
   }
 }
 
@@ -259,9 +272,11 @@ NetworkManager::parseNodeFromJson(const Json::Value &nodeJson) const {
   double y = nodeJson.get("y", 0.0).asDouble();
   NodeType::Type type = NodeType::fromString(nodeJson["type"].asString());
 
-  return std::make_shared<Node>(
+  std::shared_ptr<Node> node = std::make_shared<Node>(
       type, nodeJson["name"].asString(), nodeJson["ip"].asString(),
       nodeJson["port"].asInt(), std::make_pair(x, y), *this);
+
+  return node;
 }
 
 void NetworkManager::createRoutingTable() {
@@ -269,7 +284,7 @@ void NetworkManager::createRoutingTable() {
   topology.resize(nodes.size());
 
   for (int i = 0; i < nodes.size(); i++) {
-    topology[i] = std::vector<int>(nodes.size(), 0);
+    topology[i] = std::vector<long long>(nodes.size(), 0);
   }
 }
 
@@ -285,36 +300,34 @@ void NetworkManager::updateRoutingTable(const std::shared_ptr<Node> &src) {
 
       int x_diff = std::pow(i_coords.first - j_coords.first, 2);
       int y_diff = std::pow(i_coords.second - j_coords.second, 2);
+      long long weight = std::sqrt(x_diff + y_diff);
 
-      int weight = 0;
-
-      auto i_isGround = nodes[i]->getType() == NodeType::GROUND;
-      auto j_isGround = nodes[j]->getType() == NodeType::GROUND;
+      auto i_isGround = (nodes[i]->getType() == NodeType::GROUND);
+      auto j_isGround = (nodes[j]->getType() == NodeType::GROUND);
 
       if (i_isGround && j_isGround) {
-        weight += 10000; // PRIORITIZE SATELLITE
+        topology[i][j] = LONG_LONG_MAX;
+        topology[j][i] = LONG_LONG_MAX;
+        continue;
       } else if (i_isGround) {
-        weight += 50;
+        weight += 1000;
       } else if (j_isGround) {
-        weight += 50;
+        weight += 1000;
       }
 
-      topology[i][j] = std::sqrt(x_diff + y_diff) + weight;
-      topology[j][i] = std::sqrt(x_diff + y_diff) + weight;
-    }
-  }
+      // Applying a quadratic penalty when exceeding 500 units
+      if (weight > 500) {
+        weight = 500 + (weight - 500) * (weight - 500);
+      }
 
-  for (int i = 0; i < nodes.size(); i++) {
-    std::string row;
-    for (int j = 0; j < nodes.size(); j++) {
-      row += std::to_string(topology[i][j]) + "\t";
+      topology[i][j] = weight;
+      topology[j][i] = weight;
     }
-    logger.log(LogLevel::DEBUG, row);
   }
 
   int src_idx = 0;
   for (int i = 0; i < nodes.size(); i++) {
-    if (nodes[i]->getId() == src->getId()) {
+    if (nodes[i]->getName() == src->getName()) {
       src_idx = i;
       break;
     }
@@ -348,7 +361,7 @@ void NetworkManager::route(int src_idx) {
     visited[minUnvIdx] = true;
 
     for (int j = 0; j < nodes.size(); j++) {
-      if (!visited[j] && topology[minUnvIdx][j] != 0 &&
+      if (!visited[j] && topology[minUnvIdx][j] != LONG_LONG_MAX &&
           minDist[minUnvIdx] + topology[minUnvIdx][j] < minDist[j]) {
         minDist[j] = minDist[minUnvIdx] + topology[minUnvIdx][j];
         if (minUnvIdx == src_idx)
@@ -359,7 +372,8 @@ void NetworkManager::route(int src_idx) {
   }
 }
 
-std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
+std::shared_ptr<Node>
+NetworkManager::getNextHop(const std::string &name) const {
   int n_idx = -1;
 
   for (int i = 0; i < nodes.size(); i++) {
@@ -369,5 +383,9 @@ std::shared_ptr<Node> NetworkManager::getNextHop(const std::string &name) {
     }
   }
 
-  return nodes[nextHop[n_idx]];
+  if (n_idx == -1 || n_idx >= nodes.size()) {
+    return nullptr;
+  } else {
+    return nodes[nextHop[n_idx]];
+  }
 }

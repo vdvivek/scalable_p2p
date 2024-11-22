@@ -7,6 +7,12 @@
 #include <string>
 #include <unordered_map>
 
+#define RED "\033[01;31m"
+#define GREEN "\033[01;32m"
+#define YELLOW "\033[01;33m"
+#define BLUE "\033[01;34m"
+#define RESET "\033[00m"
+
 enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
 
 class Logger {
@@ -38,7 +44,26 @@ public:
       logFile << logMessage << std::endl;
     }
 
-    std::cout << logMessage << std::endl;
+    switch (level) {
+    case LogLevel::INFO: {
+      std::cout << GREEN << logMessage << RESET << std::endl;
+      break;
+    }
+    case LogLevel::DEBUG: {
+      std::cout << BLUE << logMessage << RESET << std::endl;
+      break;
+    }
+
+    case LogLevel::ERROR: {
+      std::cout << RED << logMessage << RESET << std::endl;
+      break;
+    }
+
+    case LogLevel::WARNING: {
+      std::cout << YELLOW << logMessage << RESET << std::endl;
+      break;
+    }
+    }
   }
 
   void setLogLevel(LogLevel level) {

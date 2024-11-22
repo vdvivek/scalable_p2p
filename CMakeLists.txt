@@ -15,13 +15,13 @@ link_directories(/opt/homebrew/Cellar/jsoncpp/1.9.6/lib)
 
 # Shared source files
 set(SHARED_SOURCES
-        src/Node.cpp
         src/Logger.cpp
-        src/CryptoManager.cpp
-        src/NetworkManager.cpp
 )
 
 set(NEXUS_SRC
+        src/CryptoManager.cpp
+        src/NetworkManager.cpp
+        src/Node.cpp
         src/Packet.cpp
         src/Utility.cpp
         src/NodeType.h
@@ -40,7 +40,7 @@ else()
 endif()
 
 # Registry Server executable
-add_executable(registry_server registry_main/main.cpp src/NexusRegistryServer.cpp ${REGISTRY_SRC})
+add_executable(registry_server registry_main/main.cpp src/NexusRegistryServer.cpp ${REGISTRY_SRC} ${SHARED_SOURCES})
 if(${CURL_FOUND} AND ${jsoncpp_FOUND} AND ${OPENSSL_FOUND})
         target_link_libraries(registry_server CURL::libcurl jsoncpp OpenSSL::SSL OpenSSL::Crypto)
 else()

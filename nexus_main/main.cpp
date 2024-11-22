@@ -56,12 +56,6 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::cout << "Enter target node name: ";
       std::cin >> targetName;
 
-      std::cout << "Enter target IP: ";
-      std::cin >> targetIP;
-
-      std::cout << "Enter target port: ";
-      std::cin >> targetPort;
-
       // Clear the input buffer before reading the message
       std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -69,21 +63,13 @@ void handleInput(const std::shared_ptr<Node> &node) {
       std::getline(std::cin, message);
 
       if (!message.empty()) {
-        std::string fullMessage = node->getName() + " " + targetIP + " " +
-                                  std::to_string(targetPort) + " " + message;
-        node->sendMessage(targetName, targetIP, targetPort, fullMessage);
+        node->sendMessage(targetName, message);
       } else {
         logger.log(LogLevel::ERROR, "Message cannot be empty.");
       }
     } else if (command == "file") {
       std::cout << "Enter target node name: ";
       std::cin >> targetName;
-
-      std::cout << "Enter target IP: ";
-      std::cin >> targetIP;
-
-      std::cout << "Enter target port: ";
-      std::cin >> targetPort;
 
       // Clear the input buffer before reading the message
       std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -96,7 +82,7 @@ void handleInput(const std::shared_ptr<Node> &node) {
         continue;
       }
 
-      node->sendFile(targetName, targetIP, targetPort, message);
+      node->sendFile(targetName, message);
     } else if (command == "list") {
       networkManager.listNodes();
     }

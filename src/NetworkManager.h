@@ -2,13 +2,14 @@
 #define NETWORKMANAGER_H
 
 #include <cmath>
+#include <limits.h>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <json/json.h>
 
-using matrix = std::vector<std::vector<int>>;
+using matrix = std::vector<std::vector<long long>>;
 
 class Node;
 
@@ -27,6 +28,7 @@ public:
   void addNode(const std::shared_ptr<Node> &node);
   void removeNode(const std::string &id);
   void listNodes() const;
+  std::shared_ptr<Node> findNode(const std::string &name) const;
 
   std::vector<std::shared_ptr<Node>> getSatelliteNodes() const;
 
@@ -36,14 +38,14 @@ public:
   void deregisterNodeWithRegistry(const std::shared_ptr<Node> &node);
   bool sendToRegistryServer(const std::string &endpoint,
                             const std::string &jsonPayload);
-  bool updateNodeInRegistry(const std::shared_ptr<Node> &node);
+  bool updateNodeInRegistry(const std::shared_ptr<Node> &node) const;
 
   std::string getNodePublicKey(const std::string &nodeName);
 
   void createRoutingTable();
   void updateRoutingTable(const std::shared_ptr<Node> &src);
   void route(int src_idx);
-  std::shared_ptr<Node> getNextHop(const std::string &name);
+  std::shared_ptr<Node> getNextHop(const std::string &name) const;
 
   std::vector<int> nextHop;
 
