@@ -62,8 +62,8 @@ bool NetworkManager::performCurlRequest(const std::string &url,
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);       // Set timeout
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L); // Set connection timeout
+  // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);       // Set timeout
+  // curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L); // Set connection timeout
 
   CURLcode res = curl_easy_perform(curl);
   curl_slist_free_all(headers);
