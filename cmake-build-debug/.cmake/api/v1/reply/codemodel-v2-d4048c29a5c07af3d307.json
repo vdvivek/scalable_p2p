@@ -41,14 +41,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "nexus::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-nexus-Debug-865c8f7bd17123e9241c.json",
+					"jsonFile" : "target-nexus-Debug-36d25088e0ad39405030.json",
 					"name" : "nexus",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "registry_server::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-registry_server-Debug-ff1408e7d688e33bd96e.json",
+					"jsonFile" : "target-registry_server-Debug-a4919ce267d21954f76b.json",
 					"name" : "registry_server",
 					"projectIndex" : 0
 				}
