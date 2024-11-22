@@ -101,8 +101,9 @@ void Node::receiveMessage(std::string &message) {
   // Null-terminate the buffer to treat it as a string
   buffer[bytesReceived] = '\0';
   std::vector<uint8_t> receivedMessage(buffer, buffer + bufferSize);
-  logger.log(LogLevel::INFO,
-             "[NEXUS] Buffer size: " + std::to_string(receivedMessage.size()));
+  // logger.log(LogLevel::DEBUG,
+  //            "[NEXUS] Buffer size: " +
+  //            std::to_string(receivedMessage.size()));
 
   char senderIP[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &senderAddr.sin_addr, senderIP, sizeof(senderIP));
@@ -110,7 +111,7 @@ void Node::receiveMessage(std::string &message) {
 
   std::string senderName, targetIP;
   int targetPort = 0;
-  logger.log(LogLevel::INFO, "[NEXUS] Received message from " +
+  logger.log(LogLevel::INFO, "[NEXUS] Received packet from " +
                                  std::string(senderIP) + ":" +
                                  std::to_string(senderPort));
   Packet pkt = pkt.deserialize(receivedMessage);
@@ -182,7 +183,6 @@ void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
   inet_pton(AF_INET, targetIP.c_str(), &targetAddr.sin_addr);
 
   auto pkt_data = pkt.serialize();
-  auto p2 = pkt.deserialize(pkt_data);
 
   const int bytesSent = sendto(socket_fd, pkt_data.data(), pkt_data.size(), 0,
                                reinterpret_cast<struct sockaddr *>(&targetAddr),
@@ -192,8 +192,7 @@ void Node::sendTo(const std::string &targetIP, int targetPort, Packet &pkt) {
     logger.log(LogLevel::ERROR,
                "Failed to send data: " + std::string(strerror(errno)));
   } else {
-    logger.log(LogLevel::INFO, "[NEXUS] Sent " + std::to_string(bytesSent) +
-                                   " to " + targetIP + ":" +
+    logger.log(LogLevel::INFO, "[NEXUS] Sent packet to " + targetIP + ":" +
                                    std::to_string(targetPort));
   }
 }
@@ -236,8 +235,8 @@ void Node::sendFile(const std::string &targetName,
   for (int i = 0; i < fragCount; i++) {
     fileHandle.read(reinterpret_cast<char *>(buffer.data()), MAX_BUFFER_SIZE);
     auto byteCount = fileHandle.gcount();
-    logger.log(LogLevel::INFO,
-               "[NEXUS] Read:  " + std::to_string(byteCount) + " bytes.");
+    // logger.log(LogLevel::DEBUG,
+    //            "[NEXUS] Read:  " + std::to_string(byteCount) + " bytes.");
     logger.log(LogLevel::INFO,
                "[NEXUS] Sending fragment: " + std::to_string(fragNumber));
 
@@ -330,9 +329,9 @@ void Node::processMessage(Packet &pkt) {
     writeToFile(pkt);
     reassembleFile(pkt);
   } else {
-    logger.log(LogLevel::INFO,
-               "[NEXUS] Message:" +
-                   std::string(pkt.data.begin(), pkt.data.end()));
+    std::cout << "From: " + std::string(IP) + ":" + std::to_string(PORT) + ">" +
+                     std::string(pkt.data.begin(), pkt.data.end())
+              << std::endl;
   }
 }
 
@@ -384,7 +383,8 @@ void Node::reassembleFile(Packet &pkt) {
     std::ifstream fragment(filename, std::ios::binary);
     output << fragment.rdbuf();
     fragment.close();
-    logger.log(LogLevel::INFO, "[REASSEMBLY] Deleting fragment: " + filename);
+    // logger.log(LogLevel::DEBUG, "[REASSEMBLY] Deleting fragment: " +
+    // filename);
     remove(filename.c_str());
   }
   output.close();

@@ -35,7 +35,7 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
 bool NetworkManager::performCurlRequest(const std::string &url,
                                         const std::string &payload,
                                         std::string &response) {
-  logger.log(LogLevel::INFO,
+  logger.log(LogLevel::DEBUG,
              "[NEXUS] Performing request to NexusRegistryServer ...");
   CURL *curl = curl_easy_init();
   if (!curl) {
