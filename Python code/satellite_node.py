@@ -4,7 +4,7 @@ import math
 import time
 import struct
 
-#written by Hritika Rahul Mehta and Ziqi Zheng
+# Written by Hritika Rahul Mehta and Ziqi Zheng
 
 class SatelliteNode:
     def __init__(self, node_id, port, x, y):
